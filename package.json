@@ -1,0 +1,51 @@
+{
+  "name": "steno",
+  "version": "0.1.0",
+  "description": "developer tool for integration testing of Slack Apps",
+  "bin": {
+    "steno": "bin/cli.js"
+  },
+  "scripts": {
+    "test": "npm run tslint && echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "clean": "rimraf dist",
+    "watch": "tsc -w",
+    "tslint": "tslint -c tslint.json -p tsconfig.json",
+    "start": "npm run clean && npm run build && node bin/cli.js",
+    "dist": "npm run clean && npm run build && pkg --out-path pkg ."
+  },
+  "author": "Ankur Oberoi <aoberoi@gmail.com>",
+  "license": "MIT",
+  "engines": {
+    "node": "^8.1.2",
+    "npm": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^8.0.7",
+    "pkg": "^4.1.1",
+    "rimraf": "^2.6.1",
+    "tslint": "^5.5.0",
+    "typescript": "^2.4.1"
+  },
+  "dependencies": {
+    "@types/body-parser": "^1.16.4",
+    "@types/debug": "0.0.29",
+    "@types/express": "^4.0.36",
+    "@types/lodash.clonedeep": "^4.5.2",
+    "@types/mkdirp": "^0.5.0",
+    "@types/normalize-url": "^1.9.0",
+    "@types/uuid": "^3.4.0",
+    "@types/yargs": "^8.0.1",
+    "body-parser": "^1.17.2",
+    "debug": "^2.6.8",
+    "express": "^4.15.4",
+    "js-string-escape": "^1.0.1",
+    "lodash.clonedeep": "^4.5.0",
+    "mkdirp": "^0.5.1",
+    "normalize-port": "^1.0.0",
+    "normalize-url": "^1.9.1",
+    "raw-body": "^2.2.0",
+    "uuid": "^3.1.0",
+    "yargs": "^8.0.2"
+  }
+}
