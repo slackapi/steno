@@ -22,8 +22,7 @@ export class ReplayingController {
   private replayer: Replayer;
   private print: PrintFn;
 
-  constructor(incomingTargetUrl: string, controlPort: string, outPort: string, print: PrintFn,
-              scenarioName = 'untitled_scenario') {
+  constructor(incomingTargetUrl: string, controlPort: string, outPort: string, scenarioName: string, print: PrintFn) {
     this.scenarioName = scenarioName;
     this.replayer = new Replayer(incomingTargetUrl, outPort, print);
     this.app = this.createApp();
@@ -89,10 +88,10 @@ export class ReplayingController {
 }
 
 export function startReplayingController(
-  incomingRequestTargetUrl: string, controlPort: string, outPort: string, print: PrintFn,
+  incomingRequestTargetUrl: string, controlPort: string, outPort: string, scenarioName: string, print: PrintFn
 ): Promise<void> {
   const controller = new ReplayingController(
-    normalizeUrl(incomingRequestTargetUrl), normalizePort(controlPort), normalizePort(outPort), print,
+    normalizeUrl(incomingRequestTargetUrl), normalizePort(controlPort), normalizePort(outPort), scenarioName, print
   );
   return controller.start();
 }

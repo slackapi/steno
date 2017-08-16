@@ -34,6 +34,11 @@ const parser = yargs
             ' (where the Slack App sends outbound HTTP requests)',
       string: true,
     },
+    'scenario-name': {
+      default: 'untitled_scenario',
+      desc: 'The directory interactions will be saved to or loaded from',
+      string: true,
+    },
   }, (argv) => {
     log('record arguments %O', argv);
     // TODO: set a base path for where scenarios are stored
@@ -42,6 +47,7 @@ const parser = yargs
       argv.controlPort,
       argv.inPort,
       argv.outPort,
+      argv.scenarioName,
       print,
     );
   })
@@ -63,6 +69,11 @@ const parser = yargs
             ' (where the Slack App sends outbound HTTP requests)',
       string: true,
     },
+    'scenario-name': {
+      default: 'untitled_scenario',
+      desc: 'The directory interactions will be saved to or loaded from',
+      string: true,
+    },
   }, (argv) => {
     log('replay arguments %O', argv);
     // TODO: set a base path for where scenarios are stored
@@ -70,6 +81,7 @@ const parser = yargs
       argv.appBaseUrl,
       argv.controlPort,
       argv.outPort,
+      argv.scenarioName,
       print,
     );
   })
