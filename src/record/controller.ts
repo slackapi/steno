@@ -20,9 +20,8 @@ export class RecordingController {
   private scenarioName: string;
   private recorder: Recorder;
 
-  constructor(incomingTargetUrl: string, outgoingTargetUrl: string,
-              controlPort: string, inPort: string, outPort: string,
-              scenarioName = 'untitled_scenario') {
+  constructor(incomingTargetUrl: string, outgoingTargetUrl: string, controlPort: string,
+              inPort: string, outPort: string, scenarioName: string) {
     this.scenarioName = scenarioName;
     this.recorder = new Recorder(outgoingTargetUrl, outPort, incomingTargetUrl, inPort,
                                  pathFromScenarioName(this.scenarioName));
@@ -89,7 +88,7 @@ export class RecordingController {
 }
 
 export function startRecordingController(
-  incomingRequestTargetUrl: string, controlPort: string, inPort: string, outPort: string, environment = '',
+  incomingRequestTargetUrl: string, controlPort: string, inPort: string, outPort: string, scenarioName: string, environment = '',
 ): Promise<void> {
   // Slack-specific outgoing proxy configuration
   const outHostPrefix = environment ? `${environment}.` : '' ;
@@ -97,8 +96,7 @@ export function startRecordingController(
   const outTargetUrl = `https://${ outTargetHost }`;
 
   const controller = new RecordingController(
-    normalizeUrl(incomingRequestTargetUrl), outTargetUrl,
-    normalizePort(controlPort), normalizePort(inPort), normalizePort(outPort),
+    normalizeUrl(incomingRequestTargetUrl), outTargetUrl, normalizePort(controlPort), normalizePort(inPort), normalizePort(outPort), scenarioName
   );
   return controller.start();
 }
