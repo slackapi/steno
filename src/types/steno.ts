@@ -4,6 +4,8 @@ interface IncomingHttpTrailers {
   [key: string]: string | undefined;
 }
 
+export type PrintFn = (str: string, ...args: any[]) => void;
+
 export interface RequestInfo {
   body: Buffer | undefined;
   headers: IncomingHttpHeaders;

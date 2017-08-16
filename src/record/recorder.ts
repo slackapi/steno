@@ -1,4 +1,5 @@
 import Debug = require('debug');
+import { PrintFn } from 'steno';
 
 import { createProxy, HttpProxy } from './http-proxy';
 import { HttpSerializer } from './http-serializer';
@@ -13,17 +14,20 @@ export class Recorder {
   private outgoingProxy: HttpProxy;
   private outgoingPort: string | number;
   private incomingProxy: HttpProxy;
+  private incomingTargetUrl: string;
   private incomingPort: string | number;
+  private print: PrintFn;
 
   constructor(outgoingTargetUrl: string, outgoingPort: string | number,
               incomingTargetUrl: string, incomingPort: string | number,
-              storagePath: string) {
+              storagePath: string, print: PrintFn) {
     this.serializer = new HttpSerializer(storagePath);
 
     this.outgoingProxy = createProxy(outgoingTargetUrl);
     this.outgoingPort = outgoingPort;
 
     this.incomingProxy = createProxy(incomingTargetUrl);
+    this.incomingTargetUrl = incomingTargetUrl;
     this.incomingPort = incomingPort;
 
     this.outgoingProxy.on('request', (info) => { this.serializer.onRequest(info, `${Date.now()}_outgoing`); });
@@ -32,6 +36,8 @@ export class Recorder {
     this.incomingProxy.on('request', (info) => { this.serializer.onRequest(info, `${Date.now()}_incoming`); });
     // this.incomingProxy.on('request', this.serializer.onRequest);
     this.incomingProxy.on('response', this.serializer.onResponse);
+
+    this.print = print;
   }
 
   public setStoragePath(storagePath: string): Promise<void> {
@@ -45,11 +51,11 @@ export class Recorder {
       this.serializer.initialize(),
     ])
       .then(() => {
-        log(`Listening (Incoming: ${this.incomingPort}, Outgoing: ${this.outgoingPort})`);
-        log(`Scenarios Storage Path: ${this.serializer.storagePath}`);
+        this.print(`Recording (incoming on port: ${this.incomingPort}, outgoing on port: ${this.outgoingPort})`);
+        this.print(`Incoming requests forwarded to: ${this.incomingTargetUrl}`);
       })
       .catch((error) => {
-        log(`Recorder start error: ${error.message}`);
+        this.print(`Recorder failed to start: ${error.message}`);
         throw error;
       });
   }

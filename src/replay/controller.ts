@@ -5,6 +5,7 @@ import { createServer, Server } from 'http';
 import normalizePort = require('normalize-port');
 import normalizeUrl = require('normalize-url');
 import { join as pathJoin } from 'path';
+import { PrintFn } from 'steno';
 import { Replayer } from './replayer';
 
 const log = Debug('steno:replayingcontroller');
@@ -19,14 +20,16 @@ export class ReplayingController {
   private app: express.Application;
   private scenarioName: string;
   private replayer: Replayer;
+  private print: PrintFn;
 
-  constructor(incomingTargetUrl: string, controlPort: string, outPort: string, scenarioName = 'untitled_scenario') {
+  constructor(incomingTargetUrl: string, controlPort: string, outPort: string, print: PrintFn,
+              scenarioName = 'untitled_scenario') {
     this.scenarioName = scenarioName;
-    this.replayer = new Replayer(incomingTargetUrl, outPort, pathFromScenarioName(this.scenarioName));
+    this.replayer = new Replayer(incomingTargetUrl, outPort, print);
     this.app = this.createApp();
     this.port = controlPort;
     this.server = createServer(this.app);
-    log(`scenarioName: ${this.scenarioName}`);
+    this.print = print;
   }
 
   public start(): Promise<void> {
@@ -34,11 +37,13 @@ export class ReplayingController {
       new Promise((resolve, reject) => {
         this.server.on('error', reject);
         this.server.listen(this.port, () => {
-          log(`Listening on ${this.port}`);
+          this.print(`Control API started on port ${this.port}`);
+          // NOTE: it would be nice if this line could be updated dynamically rather than tailing to stdout
+          this.print(`Scenario started: ${this.scenarioName}`);
           resolve();
         });
       }),
-      this.replayer.start(),
+      this.replayer.start(pathFromScenarioName(this.scenarioName)),
     ])
     .then(() => {}); // tslint:disable-line no-empty
   }
@@ -52,9 +57,10 @@ export class ReplayingController {
       if (req.body.name) {
         const scenario = req.body.name;
         log(`will start scenario ${scenario}`);
-        this.replayer.updatePath(scenario)
+        this.replayer.updatePath(pathFromScenarioName(scenario))
           .then(() => {
-            log('scenario started');
+            this.scenarioName = scenario;
+            this.print(`Scenario started: ${this.scenarioName}`);
             res.json({ name: scenario });
           })
           .catch((error) => {
@@ -70,11 +76,11 @@ export class ReplayingController {
 
     // Change current scenario information
     app.post('/stop', (req, res) => {
-      log('stopping scenario');
       const history = this.replayer.getHistory();
       this.replayer.reset()
         .then(() => {
-          res.json(this.replayer.getHistory());
+          this.print(`Scenario ended: ${this.scenarioName}`);
+          res.json(history);
         });
     });
 
@@ -83,10 +89,10 @@ export class ReplayingController {
 }
 
 export function startReplayingController(
-  incomingRequestTargetUrl: string, controlPort: string, outPort: string,
+  incomingRequestTargetUrl: string, controlPort: string, outPort: string, print: PrintFn,
 ): Promise<void> {
   const controller = new ReplayingController(
-    normalizeUrl(incomingRequestTargetUrl), normalizePort(controlPort), normalizePort(outPort),
+    normalizeUrl(incomingRequestTargetUrl), normalizePort(controlPort), normalizePort(outPort), print,
   );
   return controller.start();
 }
