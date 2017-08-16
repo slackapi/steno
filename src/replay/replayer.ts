@@ -4,7 +4,8 @@ import express = require('express');
 import { ClientRequest, createServer, IncomingMessage, RequestOptions, Server } from 'http';
 import { Dictionary } from 'lodash';
 import cloneDeep = require('lodash.clonedeep');
-import { parse as urlParse , Url } from 'url';
+import { PrintFn } from 'steno';
+import { format as urlFormat, parse as urlParse, Url } from 'url';
 import { flattenHeaderValues, requestFunctionForTargetUrl, responseBodyToString } from '../common';
 import { Interaction, InteractionCatalog } from './interaction-catalog';
 
@@ -18,14 +19,16 @@ export class Replayer {
     (options: RequestOptions | string | URL, callback?: (res: IncomingMessage) => void) => ClientRequest;
   private targetUrl: Url;
   private catalog: InteractionCatalog;
+  private print: PrintFn;
 
-  constructor(targetUrl: string, port: string) {
+  constructor(targetUrl: string, port: string, print: PrintFn) {
     this.app = this.createApp();
     this.port = port;
     this.server = createServer(this.app);
     this.targetUrl = urlParse(targetUrl);
     this.requestFn = requestFunctionForTargetUrl(this.targetUrl);
     this.catalog = new InteractionCatalog();
+    this.print = print;
 
     this.catalog.on('clientReqTrigger', this.clientInteraction.bind(this));
   }
@@ -36,7 +39,8 @@ export class Replayer {
       new Promise((resolve, reject) => {
         this.server.on('error', reject);
         this.server.listen(this.port, () => {
-          log(`Listening on ${this.port}`);
+          this.print(`Listening for outgoing requests on port ${this.port}`);
+          this.print(`Incoming requests sent to: ${urlFormat(this.targetUrl)}`);
           resolve();
         });
       }),
