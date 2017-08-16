@@ -22,7 +22,7 @@ export class ReplayingController {
 
   constructor(incomingTargetUrl: string, controlPort: string, outPort: string, scenarioName = 'untitled_scenario') {
     this.scenarioName = scenarioName;
-    this.replayer = new Replayer(incomingTargetUrl, outPort, pathFromScenarioName(this.scenarioName));
+    this.replayer = new Replayer(incomingTargetUrl, outPort);
     this.app = this.createApp();
     this.port = controlPort;
     this.server = createServer(this.app);
@@ -38,7 +38,7 @@ export class ReplayingController {
           resolve();
         });
       }),
-      this.replayer.start(),
+      this.replayer.start(pathFromScenarioName(this.scenarioName)),
     ])
     .then(() => {}); // tslint:disable-line no-empty
   }
@@ -52,7 +52,7 @@ export class ReplayingController {
       if (req.body.name) {
         const scenario = req.body.name;
         log(`will start scenario ${scenario}`);
-        this.replayer.updatePath(scenario)
+        this.replayer.updatePath(pathFromScenarioName(scenario))
           .then(() => {
             log('scenario started');
             res.json({ name: scenario });
@@ -74,7 +74,7 @@ export class ReplayingController {
       const history = this.replayer.getHistory();
       this.replayer.reset()
         .then(() => {
-          res.json(this.replayer.getHistory());
+          res.json(history);
         });
     });
 

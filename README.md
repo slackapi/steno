@@ -69,3 +69,7 @@ OpenAPI Spec of control API -> generate steno-control wrappers in all the langua
 extend the interaction format to include metadata
 
 separate types for matchingrequestinfo / matchingresponseinfo from actual requestinfo / responseinfo from history request and history response
+
+should meta.durationMs be between the loading and the /stop call instead? the current value is something the end user could compute anyway
+
+current unmatched counts reflect interactions that are in the scenario but didn't get match anything that happened. what about things that happened that didn't match any interactions in the scenario?

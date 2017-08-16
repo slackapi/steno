@@ -19,18 +19,19 @@ export class Replayer {
   private targetUrl: Url;
   private catalog: InteractionCatalog;
 
-  constructor(targetUrl: string, port: string, path: string) {
+  constructor(targetUrl: string, port: string) {
     this.app = this.createApp();
     this.port = port;
     this.server = createServer(this.app);
     this.targetUrl = urlParse(targetUrl);
     this.requestFn = requestFunctionForTargetUrl(this.targetUrl);
-    this.catalog = new InteractionCatalog(path);
+    this.catalog = new InteractionCatalog();
 
     this.catalog.on('clientReqTrigger', this.clientInteraction.bind(this));
   }
 
-  public start(): Promise<void> {
+  public start(path: string): Promise<void> {
+    log(`replayer start with path: ${path}`);
     return Promise.all([
       new Promise((resolve, reject) => {
         this.server.on('error', reject);
@@ -39,8 +40,15 @@ export class Replayer {
           resolve();
         });
       }),
-      this.catalog.loadPath(),
+      this.catalog.loadPath(path),
     ])
+    .catch((error) => {
+      if (error.code === 'ECATALOGNOPATH') {
+        log('starting replayer with a scenario name that wasn\'t found');
+        return;
+      }
+      throw error;
+    })
     .then(() => {}); // tslint:disable-line no-empty
   }
 
@@ -49,11 +57,8 @@ export class Replayer {
   }
 
   public reset(): Promise<void> {
-    return this.catalog.loadPath('untitled_scenario')
-      .catch(() => {
-        // this will most likely happen
-        return;
-      });
+    this.catalog.reset();
+    return Promise.resolve();
   }
 
   // remove request IDs, serialize body's to strings, add metadata
@@ -65,12 +70,14 @@ export class Replayer {
         body: interaction.request.body ? (interaction.request.body as Buffer).toString() : '',
         headers: flattenHeaderValues(interaction.request.headers),
         method: interaction.request.method,
+        timestamp: interaction.requestTimestamp,
         url: interaction.request.url,
       };
       const historyResponseRecord: any = {
         body: responseBodyToString(interaction.response),
         headers: cloneDeep(interaction.response.headers),
         statusCode: interaction.response.statusCode,
+        timestamp: interaction.responseTimestamp,
       };
       return {
         request: historyRequestRecord,
@@ -78,9 +85,18 @@ export class Replayer {
       };
     });
 
+    // tslint:disable-next-line no-shadowed-variable
+    const { highest, lowest } = scrubbedHistory.reduce(({ highest, lowest }, i) => {
+      return {
+        highest: Math.max(highest, i.response.timestamp),
+        lowest: Math.min(lowest, i.request.timestamp),
+      };
+    }, { lowest: Date.now(), highest: 0 });
+    const duration = highest - lowest;
     const unmatchedInteractions = this.catalog.interactions
       .filter((i) => !this.catalog.previouslyMatched.has(i.request.id));
     const historyMeta: any = {
+      durationMs: duration < 0 ? null : duration, // guard for having a val when no interactions took place
       unmatchedCount: {
         incoming: unmatchedInteractions.filter((i) => i.direction === 'incoming').length,
         outgoing: unmatchedInteractions.filter((i) => i.direction === 'outgoing').length,
@@ -98,13 +114,14 @@ export class Replayer {
 
     app.use(rawParser({ type: '*/*' }));
     app.use((req, res, next) => {
-      log('incoming request');
+      log('outgoing request');
       const interaction = this.catalog.findMatchingInteraction(req);
       if (interaction) {
         const respInfo = interaction.response;
         res.writeHead(respInfo.statusCode, respInfo.statusMessage, respInfo.headers);
         res.end(respInfo.body, () => {
-          log('incoming request got response');
+          log('outgoing request got response');
+          this.catalog.onOutgoingResponse(interaction.request.id);
         });
       } else {
         next();
@@ -121,11 +138,12 @@ export class Replayer {
       method: requestInfo.method,
       path: requestInfo.url,
     });
-    log('outgoing request');
+    log('incoming request');
     const request = this.requestFn(reqOptions);
+    const requestTimestamp = Date.now();
     request.on('response', (response: IncomingMessage) => {
-      // TODO: figure out if the response actually matched what it said in the interaction
-      log('outgoing request got response');
+      log('incoming request got response');
+      this.catalog.onIncomingResponse(interaction, requestTimestamp, response);
     });
     request.end(requestInfo.body, () => {
       log('outgoing request sent');
