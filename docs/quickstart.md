@@ -20,16 +20,18 @@ on tried-and-true integration testing patterns. But let's get out of the jargon 
 
 2. It's time to record, smile! Just kidding, no cameras please :camera:. In **record mode** Steno helps you build
    **scenarios**, which are directories inside your project that contain text files, each one describing one HTTP
-   request and response. In order for Steno to record, you need to adjust your code so that instead of sending
-   requests to `https://slack.com/...`, it sends requests to a local server that Steno will start, by default this
-   would be `http://localhost:3000/...`. Steno will also record requests that are coming **into** your app that
-   originate from the Slack Platform. You may already have a tunneling tool like [ngrok set
-   up](https://api.slack.com/tutorials/tunneling-with-ngrok) to let the Slack Platform reach your app's local server.
-   You can continue to use it, but instead of wiring ngrok up to forward requests directly to a port your app is
-   listening on, you substitute the port Steno is listening on, which by default is 3010. The last piece of wiring we
-   need is to let Steno know where to forward those requests, in this example we'll say that the app is listening on
-   port 5000, so the `appBaseUrl` is `localhost:5000`. We're ready to open our terminal, navigate to a test directory
-   in your project, and run the tool in record mode: `steno record localhost:5000`.
+   request and response. Each scenario directory is named, so choosing a descriptive name is important. For our
+   example we will use `successfull_installation_will_dm_installing_user`. In order for Steno to record, you need to
+   adjust your code so that instead of sending requests to `https://slack.com/...`, it sends requests to a local
+   server that Steno will start, by default this would be `http://localhost:3000/...`. Steno will also record requests
+   that are coming **into** your app that originate from the Slack Platform. You may already have a tunneling tool
+   like [ngrok set up](https://api.slack.com/tutorials/tunneling-with-ngrok) to let the Slack Platform reach your
+   app's local server. You can continue to use it, but instead of wiring ngrok up to forward requests directly to a
+   port your app is listening on, you substitute the port Steno is listening on, which by default is 3010. The last
+   piece of wiring we need is to let Steno know where to forward those requests, in this example we'll say that the
+   app is listening on port 5000, so the `appBaseUrl` is `localhost:5000`. We're ready to open our terminal, navigate
+   to a test directory in your project, and run the tool in record mode:
+   `steno record localhost:5000 --scenario-name successfull_installation_will_dm_installing_user`.
 
 3. With your sidekick Steno :couple: standing by, you can run your first test. Pick your favorite test runner and
    write a test case that stimulates the behavior you chose. Following from our example, you would write a case that
@@ -38,16 +40,16 @@ on tried-and-true integration testing patterns. But let's get out of the jargon 
    your app is in the state it should be, namely that the token has been stored. But how do we assert that the DM was
    sent containing the message we intended to be sent? Read on, and we'll find out.
 
-4. Use Steno's **control API** to load scenarios :vhs:. Terminate the `steno` command in your
-   terminal and let's take a look at what we have. You should find that there's a new directory called `scenarios/` in the
-   directory you ran the command from. Inside that directory, you should see another directory called
-   `untitled_scenario` which contains the record of all the HTTP interactions your app and Slack just made. Let's
-   rename that directory to something useful such as `successfull_installation_will_dm_installing_user`. Before we can
-   replay this scenario, we need to add setup code to our test case so Steno is prepared to run this particular
-   scenario. This can be done by making a request to Steno's control API, which be default is served on port 4000. For
-   example, with curl this looks like
+4. Use Steno's **control API** to load scenarios :vhs:. Terminate the `steno` command in your terminal and let's take
+   a look at what we have. You should find that there's a new directory called `scenarios/` in the directory you ran
+   the command from. Inside that directory, you should see another directory called
+   `successfull_installation_will_dm_installing_user` which contains the record of all the HTTP interactions your app
+   and Slack just made. Before we can replay this scenario, we need to add setup code to our test case so Steno is
+   prepared to run this particular scenario. This can be done by making a request to Steno's control API, which be
+   default is served on port 4000. For example, with curl this looks like
    `curl -X POST -H "Content-Type: application/json" -d "{ "name":"successfull_installation_will_dm_installing_user" }" http://localhost:4000/start`.
-   Depending on your language or HTTP client of choice, you'll turn this into code to place in your test case's set up.
+   Depending on your language and HTTP client of choice, you'll turn this into code to place in your test case's set
+   up.
 
 5. Steno's control API equips you to answer our burning question :fire:, can we assert that our DM was sent? With one
    more request at the end of your test case, you recieve data about what actually happened and how it stacks up
