@@ -1,9 +1,13 @@
-import yargs = require('yargs');
 import Debug = require('debug');
+import yargs = require('yargs');
 import { startRecordingController } from './record/controller';
 import { startReplayingController } from './replay/controller';
 
 const log = Debug('steno:cli');
+
+function print(str: string, ...args: any[]) {
+  console.log(str, ...args); // tslint:disable-line no-console
+}
 
 const parser = yargs
   .command('record <appBaseUrl>', 'start recording scenarios', {
@@ -43,7 +47,8 @@ const parser = yargs
       argv.controlPort,
       argv.inPort,
       argv.outPort,
-      argv.scenarioName
+      argv.scenarioName,
+      print,
     );
   })
   .command('replay <appBaseUrl>', 'start replaying scenarios', {
@@ -76,7 +81,8 @@ const parser = yargs
       argv.appBaseUrl,
       argv.controlPort,
       argv.outPort,
-      argv.scenarioName
+      argv.scenarioName,
+      print,
     );
   })
   .demandCommand(1)

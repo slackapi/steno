@@ -18,7 +18,9 @@ export interface Interaction {
   request: RequestInfo;
   response: ResponseInfo;
   direction: 'incoming' | 'outgoing';
-  timestamp: number;
+  timestamp?: number; // useful for ordering in the scenario as recorded
+  requestTimestamp?: number; // useful for history
+  responseTimestamp?: number; // useful for history
 }
 
 function parseRequestData(requestData: string): RequestInfo {
@@ -159,30 +161,44 @@ export class InteractionCatalog extends EventEmitter {
   public previouslyMatched: Set<string>;
   private storagePath: string;
 
-  constructor(storagePath: string) {
+  constructor() {
     super();
-    this.storagePath = storagePath;
-    this.previouslyMatched = new Set();
-    this.interactionHistory = [];
+    this.reset();
   }
 
-  public loadPath(newStoragePath?: string): Promise<void> {
-    if (newStoragePath) {
-      this.storagePath = newStoragePath;
-    }
+  public loadPath(storagePath: string): Promise<void> {
+    this.storagePath = storagePath;
     return readDir(this.storagePath)
+      .catch((error) => {
+        // if the scenario dir is missing, just continue as if its an empty scenario
+        if (error.code === 'ENOENT') {
+          const noPathError: Error & { code?: string } = new Error(`Path not found: ${this.storagePath}`);
+          noPathError.code = 'ECATALOGNOPATH';
+          throw noPathError;
+        }
+        // undo the initialization to signal that this catalog is not in a "loaded" state
+        this.storagePath = '';
+        throw error;
+      })
       .then((filenames) => {
         return Promise.all(filenames.map((f) => parseFile(resolvePath(this.storagePath, f))));
       })
       .then((interactionsAndSkipped) => interactionsAndSkipped.filter((i) => !!i))
       .then((interactions) => {
-        log('interactions loaded from path');
+        log(`interactions loaded from path: ${interactions.length}`);
         this.interactions = interactions as Interaction[];
         this.previouslyMatched = new Set();
         this.interactionHistory = [];
         this.checkTriggers();
       })
       .then(() => {}); // tslint:disable-line no-empty
+  }
+
+  public reset() {
+    this.interactions = [];
+    this.storagePath = '';
+    this.previouslyMatched = new Set();
+    this.interactionHistory = [];
   }
 
   // NOTE: this method is a bit overloaded. it not only finds the matching interaction,
@@ -222,7 +238,7 @@ export class InteractionCatalog extends EventEmitter {
         }
         return true;
       })
-      .sort((a, b) => b.timestamp - a.timestamp)
+      .sort((a, b) => (b.timestamp as number) - (a.timestamp as number))
       .shift();
     if (match) {
       this.previouslyMatched.add(match.request.id);
@@ -237,20 +253,23 @@ export class InteractionCatalog extends EventEmitter {
           trailers: undefined,
           url: req.originalUrl,
         },
+        requestTimestamp: Date.now(),
         response: match.response,
-        timestamp: Date.now(),
       });
       this.checkTriggers();
     }
     return match;
   }
 
-  public onIncomingResponse(interaction: Interaction, res: IncomingMessage) {
+  // called when an incoming request (one sent to the App) gets a response - the body isn't yet complete
+  // TODO: figure out if the response actually matched what it said in the interaction
+  public onIncomingResponse(interaction: Interaction, reqTimestamp: number, res: IncomingMessage) {
     getRawBody(res)
       .then((body) => {
         this.interactionHistory.push({
           direction: 'outgoing',
           request: interaction.request,
+          requestTimestamp: reqTimestamp,
           response: {
             body,
             headers: res.headers,
@@ -260,7 +279,7 @@ export class InteractionCatalog extends EventEmitter {
             statusMessage: res.statusMessage as string,
             trailers: undefined,
           },
-          timestamp: Date.now(),
+          responseTimestamp: Date.now(),
         });
       })
       .catch((error) => {
@@ -268,18 +287,29 @@ export class InteractionCatalog extends EventEmitter {
       });
   }
 
+  // called when an outgoing request (one set to steno) is finished writing the response
+  public onOutgoingResponse(requestId: string) {
+    const interaction = this.interactionHistory.find((i) => i.request.id === requestId);
+    if (interaction) {
+      interaction.responseTimestamp = Date.now();
+    } else {
+      log('could not find request in history when capturing outgoing request\'s response timestamp');
+    }
+  }
+
   // this is kind of ugly because we previously made the assumption that previouslyMatched and
   // interactionHistory were updated atomically, and now we've split that across two methods
   private checkTriggers() {
     log('check triggers');
-    const sortedInteractions = this.interactions.slice().sort((a, b) => b.timestamp - a.timestamp);
+    const sortedInteractions = this.interactions.slice()
+      .sort((a, b) => (b.timestamp as number) - (a.timestamp as number));
     this.interactions
       .filter((interaction) => !this.previouslyMatched.has(interaction.request.id))
       .filter((interaction) => interaction.direction === 'incoming')
-      .sort((a, b) => b.timestamp - a.timestamp)
+      .sort((a, b) => (b.timestamp as number) - (a.timestamp as number))
       .filter((unmatched) => {
         return sortedInteractions
-          .filter((interaction) => interaction.timestamp < unmatched.timestamp)
+          .filter((interaction) => (interaction.timestamp as number) < (unmatched.timestamp as number))
           .every((pi) => this.previouslyMatched.has(pi.request.id));
       })
       .forEach((i) => {

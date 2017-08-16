@@ -5,6 +5,7 @@ import { createServer, Server } from 'http';
 import normalizePort = require('normalize-port');
 import normalizeUrl = require('normalize-url');
 import { join as pathJoin } from 'path';
+import { PrintFn } from 'steno';
 import { Recorder } from './recorder';
 
 const log = Debug('steno:recordingcontroller');
@@ -19,15 +20,17 @@ export class RecordingController {
   private app: express.Application;
   private scenarioName: string;
   private recorder: Recorder;
+  private print: PrintFn;
 
   constructor(incomingTargetUrl: string, outgoingTargetUrl: string, controlPort: string,
-              inPort: string, outPort: string, scenarioName: string) {
+              inPort: string, outPort: string, scenarioName: string, print: PrintFn) {
     this.scenarioName = scenarioName;
     this.recorder = new Recorder(outgoingTargetUrl, outPort, incomingTargetUrl, inPort,
-                                 pathFromScenarioName(this.scenarioName));
+                                 pathFromScenarioName(this.scenarioName), print);
     this.app = this.createApp();
     this.port = controlPort;
     this.server = createServer(this.app);
+    this.print = print;
     log(`scenarioName: ${this.scenarioName}`);
   }
 
@@ -36,7 +39,9 @@ export class RecordingController {
       new Promise((resolve, reject) => {
         this.server.on('error', reject);
         this.server.listen(this.port, () => {
-          log(`Listening on ${this.port}`);
+          this.print(`Control API started on port ${this.port}`);
+          // NOTE: it would be nice if this line could be updated dynamically rather than tailing to stdout
+          this.print(`Scenario: ${this.scenarioName}`);
           resolve();
         });
       }),
@@ -50,10 +55,10 @@ export class RecordingController {
       this.scenarioName = scenarioName;
       return this.recorder.setStoragePath(pathFromScenarioName(this.scenarioName))
         .then(() => {
-          log('scenario name change success');
+          this.print(`Scenario: ${this.scenarioName}`);
         })
         .catch((error) => {
-          log(`scenario name change FAIL: ${error.message}. system is in a bad state.`);
+          this.print(`Scenario name change FAIL: ${error.message}. system is in a bad state.`);
           throw error;
         });
     } else {
@@ -88,7 +93,7 @@ export class RecordingController {
 }
 
 export function startRecordingController(
-  incomingRequestTargetUrl: string, controlPort: string, inPort: string, outPort: string, scenarioName: string, environment = '',
+  incomingRequestTargetUrl: string, controlPort: string, inPort: string, outPort: string, scenarioName: string, print: PrintFn, environment = '',
 ): Promise<void> {
   // Slack-specific outgoing proxy configuration
   const outHostPrefix = environment ? `${environment}.` : '' ;
@@ -96,7 +101,7 @@ export function startRecordingController(
   const outTargetUrl = `https://${ outTargetHost }`;
 
   const controller = new RecordingController(
-    normalizeUrl(incomingRequestTargetUrl), outTargetUrl, normalizePort(controlPort), normalizePort(inPort), normalizePort(outPort), scenarioName
+    normalizeUrl(incomingRequestTargetUrl), outTargetUrl, normalizePort(controlPort), normalizePort(inPort), normalizePort(outPort), scenarioName, print
   );
   return controller.start();
 }
