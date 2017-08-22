@@ -46,7 +46,7 @@ Steno is easiest to use if you follow this workflow. For many of you, this might
 
 5. Steno's control API equips you to answer our burning question :fire:, can we **make an assertion** that our DM was sent?
 
-   With one more request at the end of your test case, you recieve data about what actually happened and how it stacks up against our recorded scenario. For example, using curl:
+   With one more request at the end of your test case, you receive data about what actually happened and how it stacks up against our recorded scenario. For example, using curl:
 
    `curl -X POST http://localhost:4000/stop`.
 
