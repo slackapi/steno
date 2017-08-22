@@ -1,5 +1,4 @@
 theme: jekyll-theme-dinky
 title: Steno
 description: Slack App testing companion - Record and Replay your HTTP requests, both incoming and outgoing, to generate fixtures for your tests
-show_downloads: false
 
