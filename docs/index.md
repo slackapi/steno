@@ -138,6 +138,67 @@ Steno is easiest to use if you follow this workflow. For many of you, this might
     in a format we can all read and write: plain old HTTP. This means you can swap scenario files with other developers
     on your team or in the community, or even attach them when filing bugs.
 
+## Documentation
+
+### Command Line Interface
+
+Steno comes with a `--help` option to help you navigate the command line interface.
+
+```
+$ ./steno --help
+Commands:
+  record <appBaseUrl>  start recording scenarios
+  replay <appBaseUrl>  start replaying scenarios
+
+Options:
+  --help  Show help                                                    [boolean]
+```
+
+Each command also has a `--help` option to get more details.
+
+```
+$ ./steno record --help
+steno /snapshot/steno/bin/cli.js record <appBaseUrl>
+
+Options:
+  --help           Show help                                           [boolean]
+  --appBaseUrl     The base URL where all incoming requests from the Slack
+                   Platform are targetted. Incoming requestshave the protocol,
+                   hostname, and port removed, and are sent to a combination of
+                   this URL and the path.                    [string] [required]
+  --control-port   The port where the control API is served
+                                                      [string] [default: "4000"]
+  --in-port        The port where the recording server is listening for requests
+                   to forward to the Slack App (where the Slack Platform sends
+                   inbound HTTP requests)             [string] [default: "3010"]
+  --out-port       The port where the recording server is listening for requests
+                   to forward to the Slack Platform (where the Slack App sends
+                   outbound HTTP requests)            [string] [default: "3000"]
+  --scenario-name  The directory interactions will be saved to or loaded from
+                                         [string] [default: "untitled_scenario"]
+```
+
+```
+$ ./steno replay --help
+steno /snapshot/steno/bin/cli.js replay <appBaseUrl>
+
+Options:
+  --help           Show help                                           [boolean]
+  --appBaseUrl     The base URL where all recorded requests from the replaying
+                   server are targetted                      [string] [required]
+  --control-port   The port where the control API is served
+                                                      [string] [default: "4000"]
+  --out-port       The port where the replaying server is listening for requests
+                   meant for the Slack Platform (where the Slack App sends
+                   outbound HTTP requests)            [string] [default: "3000"]
+  --scenario-name  The directory interactions will be saved to or loaded from
+                                         [string] [default: "untitled_scenario"]
+```
+
+### Control API
+
+See the [control API documentation](./control) for details.
+
 ## Known Limitations
 
 * Replay mode will attempt to fire as many incoming requests from the scenario as possible, even in parallel, if all chronologically previous outgoing requests have already been matched. We're investigating a better solution so that you can describe scenarios where those requests should occur serially. Feedback welcome!
