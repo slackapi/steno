@@ -63,7 +63,7 @@ Steno is easiest to use if you follow this workflow. For many of you, this might
            "url": "/api/oauth.access",
            "headers": {
              "content-type": "application/x-www-form-urlencoded",
-             ...
+             "...": "..."
            },
            "body": "client_id=00000000000.999999999999&client_secret=e9eab23fd04e44c8d1b640e876d39d92&code=00000000000.111111111111.b5fc60d60ec8d65301fcda44028a135bc27cec7ac476938df3b2b15aac73af42&redirect_uri=http%3A%2F%2Fexample.com%2Fcallback"
          },
@@ -72,7 +72,7 @@ Steno is easiest to use if you follow this workflow. For many of you, this might
            "statusCode": 200,
            "headers": {
              "content-type": "application/json; charset=utf-8",
-             ...
+             "...": "..."
            },
            "body": "{\"ok\":true,\"access_token\":\"xoxp-00000000000-11111111111-222222222222-900cf8de83f771f22932027dd9c36dc5\",\"scope\":\"identify,bot\",\"user_id\":\"U11111111\",\"\"bot\":{\"bot_user_id\":\"U00000000\",\"bot_access_token\":\"xoxb-000000000000-I2XejP8axGr15Mz5JHFOKMCe\"}}"
          }
@@ -85,7 +85,7 @@ Steno is easiest to use if you follow this workflow. For many of you, this might
            "url": "/api/chat.postMessage",
            "headers": {
              "content-type": "application/x-www-form-urlencoded",
-             ...
+             "...": "..."
            },
            "body": "token=xoxb-000000000000-I2XejP8axGr15Mz5JHFOKMCe&channel=U11111111&text=Hello%2C%20I%27m%20ExampleBot"
          },
@@ -94,7 +94,7 @@ Steno is easiest to use if you follow this workflow. For many of you, this might
            "statusCode": 200,
            "headers": {
              "content-type": "application/json; charset=utf-8",
-             ...
+             "...": "..."
            },
            "body": "{\"ok\":true,\"channel\":\"D33333333\",\"ts\":\"0000000000.999999\",\"message\":{\"text\":\"Hello, I\'m ExampleBot\",\"username\":\"ExampleBot\",\"bot_id\":\"B44444444\",\"type\":\"message\",\"subtype\":\"bot_message\",\"ts\":\"0000000000.999999\"}}"
          }
