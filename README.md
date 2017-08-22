@@ -11,25 +11,3 @@ creating HTTP requests for your Slack App to handle. In this mode Steno also all
 each interaction in order to verify the behavior of the Slack App.
 
 [Get started with Steno](https://slackapi.github.io/steno)
-
-## Building
-
-Prerequisites: You must install the correct version of node (`>= v8`) and npm (`>= v5`). If you use nvm, you can run
-`nvm use` in the project directory to switch node versions.
-
-Install dependencies: `npm install`
-
-Build the application: `npm run build`
-
-## Running
-
-Once the application is built, you can run it as `node bin/cli.js <command>`.
-
-If you'd like to build and run all in one step, just use the `npm start <command>` script.
-
-There are a few `<command>`s available, which you can list with the `help` command.
-
-## Distributing
-
-You can build binaries for each of the supported platforms (macOS, Linux, Windows) by running `npm run dist` and
-the executables will be inside the `pkg` directory.
