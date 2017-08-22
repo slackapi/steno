@@ -211,10 +211,4 @@ See the [control API documentation](./control) for details.
 
 ## Feedback
 
-We're excited for you to get started using Steno and producing test cases that give you confidence in your code as you build your Slack app. We still have a few new ideas and we'll be shipping with a more comprehensive set of documentation about all the functionality, as well as a sample project to demonstrate an effective use of Steno in a real test suite.
-
-We'd love to hear about your experience using Steno, the good and the bad! As beta users, your feedback will be very
-influential in how we plan future development. Get in touch with the team by sending feedback to aoberoi@slack-corp.com.
-
-We see Steno as a tool that's for the community and by the community, and we look forward to our open source release
-soon.
+Steno is an open source project and we welcome feedback and new contributions. Please leave your comments in [our issue tracker on GitHub](https://github.com/slackapi/steno/issues).
