@@ -6,6 +6,7 @@ import normalizePort = require('normalize-port');
 import normalizeUrl = require('normalize-url');
 import { join as pathJoin } from 'path';
 import { PrintFn } from 'steno';
+import { ProxyTargetConfig, ProxyTargetRule } from './http-proxy';
 import { Recorder } from './recorder';
 
 const log = Debug('steno:recordingcontroller');
@@ -22,10 +23,10 @@ export class RecordingController {
   private recorder: Recorder;
   private print: PrintFn;
 
-  constructor(incomingTargetUrl: string, outgoingTargetUrl: string, controlPort: string,
+  constructor(incomingTargetConfig: ProxyTargetConfig, outgoingTargetConfig: ProxyTargetConfig, controlPort: string,
               inPort: string, outPort: string, scenarioName: string, print: PrintFn) {
     this.scenarioName = scenarioName;
-    this.recorder = new Recorder(outgoingTargetUrl, outPort, incomingTargetUrl, inPort,
+    this.recorder = new Recorder(outgoingTargetConfig, outPort, incomingTargetConfig, inPort,
                                  pathFromScenarioName(this.scenarioName), print);
     this.app = this.createApp();
     this.port = controlPort;
@@ -101,9 +102,30 @@ export function startRecordingController(
   const outTargetHost = `${ outHostPrefix }slack.com`;
   const outTargetUrl = `https://${ outTargetHost }`;
 
+  const incomingWebhooksPathPattern = /^\/services\//;
+  const slashCommandsPathPattern = /^\/commands\//;
+  const interactiveResponseUrlPathPattern = /^\/actions\//;
+  const hooksSubdomainRewriteRule: ProxyTargetRule = {
+    processor: (req, optsBefore) => {
+      if (req.url &&
+         (incomingWebhooksPathPattern.test(req.url) || slashCommandsPathPattern.test(req.url) ||
+          interactiveResponseUrlPathPattern.test(req.url))
+      ) {
+        return Object.assign({}, optsBefore, {
+          // remove host because apparently hostname is preffered. host would have to include port, so meh.
+          host: null,
+          hostname: `hooks.${outTargetHost}`,
+        });
+      }
+      return optsBefore;
+    },
+    type: 'requestOptionRewrite',
+  };
+
   const controller = new RecordingController(
-    normalizeUrl(incomingRequestTargetUrl), outTargetUrl, normalizePort(controlPort), normalizePort(inPort),
-    normalizePort(outPort), scenarioName, print,
+    { targetUrl: normalizeUrl(incomingRequestTargetUrl) },
+    { targetUrl: outTargetUrl, rules: [hooksSubdomainRewriteRule] },
+    normalizePort(controlPort), normalizePort(inPort), normalizePort(outPort), scenarioName, print,
   );
   return controller.start();
 }

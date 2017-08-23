@@ -1,7 +1,7 @@
 import Debug = require('debug');
 import { PrintFn } from 'steno';
 
-import { createProxy, HttpProxy } from './http-proxy';
+import { createProxy, HttpProxy, ProxyTargetConfig } from './http-proxy';
 import { HttpSerializer } from './http-serializer';
 
 const log = Debug('steno:recorder');
@@ -18,16 +18,16 @@ export class Recorder {
   private incomingPort: string | number;
   private print: PrintFn;
 
-  constructor(outgoingTargetUrl: string, outgoingPort: string | number,
-              incomingTargetUrl: string, incomingPort: string | number,
+  constructor(outgoingTargetConfig: ProxyTargetConfig, outgoingPort: string | number,
+              incomingTargetConfig: ProxyTargetConfig, incomingPort: string | number,
               storagePath: string, print: PrintFn) {
     this.serializer = new HttpSerializer(storagePath);
 
-    this.outgoingProxy = createProxy(outgoingTargetUrl);
+    this.outgoingProxy = createProxy(outgoingTargetConfig);
     this.outgoingPort = outgoingPort;
 
-    this.incomingProxy = createProxy(incomingTargetUrl);
-    this.incomingTargetUrl = incomingTargetUrl;
+    this.incomingProxy = createProxy(incomingTargetConfig);
+    this.incomingTargetUrl = incomingTargetConfig.targetUrl;
     this.incomingPort = incomingPort;
 
     this.outgoingProxy.on('request', (info) => { this.serializer.onRequest(info, `${Date.now()}_outgoing`); });
