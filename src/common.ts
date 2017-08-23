@@ -1,4 +1,4 @@
-import { IncomingHttpHeaders, request as httpReqFn } from 'http';
+import { IncomingHttpHeaders, OutgoingHttpHeaders, request as httpReqFn } from 'http';
 import { request as httpsReqFn } from 'https';
 import cloneDeep = require('lodash.clonedeep');
 import { ResponseInfo } from 'steno';
@@ -23,10 +23,25 @@ export function requestFunctionForTargetUrl(url: Url) {
   return httpReqFn;
 }
 
-export function fixRequestHeaders(targetUrl: Url, headers: IncomingHttpHeaders): IncomingHttpHeaders {
-  const headersCopy = cloneDeep(headers);
-  if (headersCopy.host) {
-    headersCopy.host = (targetUrl.host as string);
+export function fixRequestHeaders(hostname?: string, headers?: OutgoingHttpHeaders): IncomingHttpHeaders {
+  if (!headers) {
+    return {};
+  }
+  const headersCopy: IncomingHttpHeaders = {};
+  Object.keys(headers).forEach((key) => {
+    const val = headers[key];
+    if (val !== undefined) {
+      if (Array.isArray(val)) {
+        headersCopy[key] = val.slice();
+      } else if (typeof val === 'number') {
+        headersCopy[key] = '' + val;
+      } else {
+        headersCopy[key] = val.slice(0);
+      }
+    }
+  });
+  if (hostname && headersCopy.host) {
+    headersCopy.host = hostname;
   }
   return headersCopy;
 }

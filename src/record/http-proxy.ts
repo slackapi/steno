@@ -11,29 +11,44 @@ import { fixRequestHeaders, requestFunctionForTargetUrl } from '../common';
 
 import { RequestInfo, ResponseInfo } from 'steno';
 
+export interface ProxyTargetRule {
+  type: 'requestOptionRewrite';
+  // NOTE: perhaps instead of exposing the original request to the rule processor, we should just expose the parsed
+  // RequestInfo
+  processor: (originalReq: IncomingMessage, reqOptions: RequestOptions) => RequestOptions;
+}
+
+export interface ProxyTargetConfig {
+  rules?: ProxyTargetRule[];
+  targetUrl: string; // stores a URL after it's passed through normalizeUrl()
+}
+
 const log = Debug('steno:http-proxy');
 
 export class HttpProxy extends EventEmitter {
 
   private server: Server;
   private targetUrl: Url;
+  private requestOptionRewriteRules?: ProxyTargetRule[];
   private requestFn:
     (options: RequestOptions | string | URL, callback?: (res: IncomingMessage) => void) => ClientRequest;
 
-  constructor(targetUrl: string) {
+  constructor(targetConfig: ProxyTargetConfig) {
     super();
-    log(`proxy init with target URL: ${targetUrl}`);
-    this.targetUrl = urlParse(targetUrl);
+    log(`proxy init with target URL: ${targetConfig.targetUrl}`);
+    this.targetUrl = urlParse(targetConfig.targetUrl);
+    if (targetConfig.rules) {
+      this.requestOptionRewriteRules = targetConfig.rules.filter((r) => r.type === 'requestOptionRewrite');
+    }
     this.requestFn = requestFunctionForTargetUrl(this.targetUrl);
     this.server = createServer(HttpProxy.prototype.onRequest.bind(this));
   }
 
   public onRequest(req: IncomingMessage, res: ServerResponse) {
     // NOTE: cloneDeep usage here is for safety, but if this is a performance hit, we likely could remove it
-    const mungedHeaders = fixRequestHeaders(this.targetUrl, req.headers);
     const requestInfo: RequestInfo = {
       body: undefined,
-      headers: mungedHeaders,
+      headers: req.headers,
       httpVersion: req.httpVersion,
       id: uuid(),
       method: cloneDeep(req.method as string),
@@ -41,11 +56,21 @@ export class HttpProxy extends EventEmitter {
       url: cloneDeep(req.url as string),
     };
 
-    const proxyReqOptions = Object.assign({}, this.targetUrl, {
+    let proxyReqOptions: RequestOptions = Object.assign({}, this.targetUrl, {
       headers: requestInfo.headers,
+      href: null,
       method: requestInfo.method,
       path: requestInfo.url,
     });
+
+    if (this.requestOptionRewriteRules) {
+      // iteratively apply any rules
+      proxyReqOptions = this.requestOptionRewriteRules
+        .reduce((options, rule) => rule.processor(req, options), proxyReqOptions);
+    }
+
+    proxyReqOptions.headers = fixRequestHeaders(proxyReqOptions.hostname, proxyReqOptions.headers);
+
     log('creating proxy request with options: %O', proxyReqOptions);
     const proxyRequest = this.requestFn(proxyReqOptions);
       // TODO: are response trailers really set on `req`?
@@ -124,6 +149,6 @@ export class HttpProxy extends EventEmitter {
 
 }
 
-export function createProxy(targetUrl: string): HttpProxy {
-  return new HttpProxy(targetUrl);
+export function createProxy(targetConfig: ProxyTargetConfig): HttpProxy {
+  return new HttpProxy(targetConfig);
 }
