@@ -4,7 +4,7 @@ import { ClientRequest, createServer, IncomingHttpHeaders, IncomingMessage, Requ
   ServerResponse } from 'http';
 import cloneDeep = require('lodash.clonedeep');
 import getRawBody = require('raw-body');
-import { parse as urlParse, Url } from 'url';
+import { format as urlFormat, parse as urlParse, Url } from 'url';
 import { promisify } from 'util';
 import uuid = require('uuid/v4');
 import { fixRequestHeaders, requestFunctionForTargetUrl } from '../common';
@@ -89,6 +89,30 @@ export class HttpProxy extends EventEmitter {
         .catch((error) => {
           log(`response body read error: ${error.message}`);
         });
+    });
+    proxyRequest.on('error', (error: Error & { code: string }) => {
+      log('proxy request error: %O', error);
+      if (error.code === 'ECONNREFUSED') {
+        // TODO: print this?
+        log('target URL refused connection');
+
+        const responseInfo: ResponseInfo = {
+          body: new Buffer(`Steno failed to connect to ${urlFormat(this.targetUrl)}`),
+          headers: {},
+          httpVersion: '1.1',
+          requestId: requestInfo.id,
+          statusCode: 502,
+          statusMessage: 'Bad Gateway',
+          trailers: undefined,
+        };
+
+        res.writeHead(responseInfo.statusCode, responseInfo.statusMessage);
+        res.end(responseInfo.body);
+
+        this.emit('response', responseInfo);
+        return;
+      }
+      throw error;
     });
   }
 
