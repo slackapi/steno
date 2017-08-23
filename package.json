@@ -2,6 +2,7 @@
   "name": "steno",
   "version": "1.0.0-beta.1",
   "description": "developer tool for integration testing of Slack Apps",
+  "repository": "https://github.com/slackapi/steno.git",
   "bin": {
     "steno": "bin/cli.js"
   },

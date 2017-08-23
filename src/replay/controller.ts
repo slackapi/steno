@@ -88,10 +88,10 @@ export class ReplayingController {
 }
 
 export function startReplayingController(
-  incomingRequestTargetUrl: string, controlPort: string, outPort: string, scenarioName: string, print: PrintFn
+  incomingRequestTargetUrl: string, controlPort: string, outPort: string, scenarioName: string, print: PrintFn,
 ): Promise<void> {
   const controller = new ReplayingController(
-    normalizeUrl(incomingRequestTargetUrl), normalizePort(controlPort), normalizePort(outPort), scenarioName, print
+    normalizeUrl(incomingRequestTargetUrl), normalizePort(controlPort), normalizePort(outPort), scenarioName, print,
   );
   return controller.start();
 }

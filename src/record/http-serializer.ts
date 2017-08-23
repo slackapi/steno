@@ -108,6 +108,7 @@ export class HttpSerializer {
         this.pendingRequestDestinations.delete(responseInfo.requestId);
       });
     } else {
+      // TODO: the response may be ready before the request. set up a queue?
       log(`could not find destination for response with request id ${responseInfo.requestId}`);
     }
   }
