@@ -1,14 +1,7 @@
 {
-  "extends": "tslint:recommended",
+  "extends": "tslint-config-airbnb",
   "rules": {
-    "quotemark": [
-      true,
-      "single",
-      "avoid-template"
-    ],
-    "interface-name": [
-      true,
-      "never-prefix"
-    ]
+    "align": [true, "parameters", "statements", "members", "elements"],
+    "variable-name": [true, "allow-leading-underscore"]
   }
 }

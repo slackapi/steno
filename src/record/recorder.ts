@@ -1,15 +1,17 @@
-import Debug = require('debug');
-import { PrintFn } from 'steno';
+// import debug = require('debug');
+import { PrintFn, Service } from 'steno';
+import { Device } from '../controller';
 
 import { createProxy, HttpProxy, ProxyTargetConfig } from './http-proxy';
 import { HttpSerializer } from './http-serializer';
 
-const log = Debug('steno:recorder');
+// const log = debug('steno:recorder');
 
-// A recorder is composed of two proxy servers: one called the outgoing proxy and another called the incoming proxy.
-// The outgoing proxy takes requests from the application and forwards them to the external service. The incoming
-// proxy does the opposite: takes requests from the external service and fowards them to the application.
-export class Recorder {
+// A recorder is composed of two proxy servers: one called the outgoing proxy and another called the
+// incoming proxy. The outgoing proxy takes requests from the application and forwards them to the
+// external service. The incoming proxy does the opposite: takes requests from the external service
+// and fowards them to the application.
+export class Recorder implements Service, Device {
   private serializer: HttpSerializer;
   private outgoingProxy: HttpProxy;
   private outgoingPort: string | number;
@@ -18,9 +20,12 @@ export class Recorder {
   private incomingPort: string | number;
   private print: PrintFn;
 
-  constructor(outgoingTargetConfig: ProxyTargetConfig, outgoingPort: string | number,
-              incomingTargetConfig: ProxyTargetConfig, incomingPort: string | number,
-              storagePath: string, print: PrintFn) {
+  constructor(
+    incomingTargetConfig: ProxyTargetConfig, incomingPort: string | number,
+    outgoingTargetConfig: ProxyTargetConfig, outgoingPort: string | number,
+    storagePath: string,
+    print: PrintFn = console.log,
+  ) {
     this.serializer = new HttpSerializer(storagePath);
 
     this.outgoingProxy = createProxy(outgoingTargetConfig);
@@ -30,10 +35,14 @@ export class Recorder {
     this.incomingTargetUrl = incomingTargetConfig.targetUrl;
     this.incomingPort = incomingPort;
 
-    this.outgoingProxy.on('request', (info) => { this.serializer.onRequest(info, `${Date.now()}_outgoing`); });
+    this.outgoingProxy.on('request', (info) => {
+      return this.serializer.onRequest(info, `${Date.now()}_outgoing`);
+    });
     // this.outgoingProxy.on('request', this.serializer.onRequest);
     this.outgoingProxy.on('response', this.serializer.onResponse);
-    this.incomingProxy.on('request', (info) => { this.serializer.onRequest(info, `${Date.now()}_incoming`); });
+    this.incomingProxy.on('request', (info) => {
+      return this.serializer.onRequest(info, `${Date.now()}_incoming`);
+    });
     // this.incomingProxy.on('request', this.serializer.onRequest);
     this.incomingProxy.on('response', this.serializer.onResponse);
 
@@ -51,7 +60,8 @@ export class Recorder {
       this.serializer.initialize(),
     ])
       .then(() => {
-        this.print(`Recording (incoming on port: ${this.incomingPort}, outgoing on port: ${this.outgoingPort})`);
+        this.print(`Recording (incoming on port: ${this.incomingPort}, ` +
+          `outgoing on port: ${this.outgoingPort})`);
         this.print(`Incoming requests forwarded to: ${this.incomingTargetUrl}`);
       })
       .catch((error) => {

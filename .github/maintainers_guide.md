@@ -19,7 +19,7 @@ The application can be built in the following configurations:
 
 Development: `npm run build`. After a successful build, the application can be run using `node bin/cli.js <command>`.
 
-Release: `npm run dist`. After a successful build, the individual platform binaries will be inside the `/pkg` directory.
+Release: `npm run pkg`. After a successful build, the individual platform binaries will be inside the `/pkg` directory.
 
 ### Testing
 

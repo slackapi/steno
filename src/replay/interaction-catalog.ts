@@ -1,15 +1,15 @@
-import Debug = require('debug');
+import debug = require('debug');
 import { EventEmitter } from 'events';
 import { Request } from 'express';
 import fs = require('fs');
-import { IncomingHttpHeaders, IncomingMessage } from 'http';
+import { IncomingMessage } from 'http';
 import { basename, resolve as resolvePath } from 'path';
-import getRawBody = require('raw-body');
-import { RequestInfo, ResponseInfo } from 'steno';
+import getRawBody = require('raw-body'); // tslint:disable-line import-name
+import { RequestInfo, ResponseInfo, NotOptionalIncomingHttpHeaders } from 'steno';
 import { promisify } from 'util';
-import uuid = require('uuid/v4');
+import uuid = require('uuid/v4'); // tslint:disable-line import-name
 
-const log = Debug('steno:interaction-catalog');
+const log = debug('steno:interaction-catalog');
 
 const readDir = promisify(fs.readdir);
 const readFile = promisify(fs.readFile);
@@ -26,7 +26,7 @@ export interface Interaction {
 function parseRequestData(requestData: string): RequestInfo {
   const [firstLine, ...lines] = requestData.split('\n');
   const [method, url, httpData] = firstLine.split(' ');
-  let [_, httpVersion] = httpData.split('/'); // tslint:disable-line prefer-const
+  let [, httpVersion] = httpData.split('/'); // tslint:disable-line prefer-const
   if (!httpVersion) { httpVersion = '1.1'; }
 
   const emptyLineIndex = lines.indexOf('');
@@ -39,7 +39,7 @@ function parseRequestData(requestData: string): RequestInfo {
     const val = valData.indexOf(', ') === -1 ? valData : valData.split(', ');
     h[key] = val;
     return h;
-  }, ({} as IncomingHttpHeaders));
+  }, ({} as NotOptionalIncomingHttpHeaders));
 
   let body;
   if (emptyLineIndex < lines.length) {
@@ -48,26 +48,26 @@ function parseRequestData(requestData: string): RequestInfo {
   }
 
   return {
-    body: Buffer.from(body),
     headers,
     httpVersion,
-    id: uuid(),
     method,
+    url,
+    body: Buffer.from(body),
+    id: uuid(),
     // TODO: trailers?
     trailers: undefined,
-    url,
   };
 }
 
 function parseResponseData(responseData: string, requestId: string): ResponseInfo {
   log(`response data: ${responseData}`);
-  const [_, __, firstLine, ...lines] = responseData.split('\n');
+  const [, , firstLine, ...lines] = responseData.split('\n');
   const firstLineMatch = /^HTTP\/([\w.]+) (\d+) ([\w ]+)$/ig.exec(firstLine);
   if (!firstLineMatch) {
     log(`first line: ${firstLine}`);
     throw Error('Invalid response data: first line does not match format');
   }
-  const [___, httpVersion, statusCodeData, statusMessage] = firstLineMatch;
+  const [, httpVersion, statusCodeData, statusMessage] = firstLineMatch;
   const statusCode = parseInt(statusCodeData, 10);
 
   const emptyLineIndex = lines.indexOf('');
@@ -80,7 +80,7 @@ function parseResponseData(responseData: string, requestId: string): ResponseInf
     const val = valData.indexOf(', ') === -1 ? valData : valData.split(', ');
     h[key] = val;
     return h;
-  }, ({} as IncomingHttpHeaders));
+  }, ({} as NotOptionalIncomingHttpHeaders));
 
   let body;
   if (emptyLineIndex < lines.length) {
@@ -88,20 +88,21 @@ function parseResponseData(responseData: string, requestId: string): ResponseInf
     body = JSON.parse(bodyData);
   }
 
-  // HACK: removing content-encoding so that we don't need to deflate or gzip the body before transporting
+  // HACK: removing content-encoding so that we don't need to deflate or gzip the body before
+  // transporting
   if (headers['content-encoding']) {
     delete headers['content-encoding'];
     delete headers['content-length'];
   }
 
   return {
-    body: Buffer.from(body),
     headers,
     httpVersion,
     requestId,
     statusCode,
     statusMessage,
     // TODO: trailers?
+    body: Buffer.from(body),
     trailers: undefined,
   };
 }
@@ -113,7 +114,8 @@ function parseFile(filename: string): Promise<Interaction | undefined> {
     .then((fileContents): Promise<Interaction | undefined> => {
       // TODO: shared constants between here and serializer?
       const [requestData, responseData] = fileContents.split('-----');
-      // NOTE: why won't typescript acknowledge the fact that any of the destructured values could be undefined?
+      // NOTE: why won't typescript acknowledge the fact that any of the destructured values could
+      // be undefined?
       if (!requestData || !responseData) {
         log(`cannot parse interaction from ${filename}`);
         // skip
@@ -124,17 +126,18 @@ function parseFile(filename: string): Promise<Interaction | undefined> {
       const responseInfo = parseResponseData(responseData, requestInfo.id);
 
       return Promise.resolve({
+        timestamp,
         direction: (direction as 'incoming' | 'outgoing'),
         request: requestInfo,
         response: responseInfo,
-        timestamp,
       });
     });
 }
 
 // TODO: populate the ignored headers
 const ignoredHeaders = ['host'];
-function matchHeaders(pattern: IncomingHttpHeaders, actual: IncomingHttpHeaders): boolean {
+function matchHeaders(pattern: NotOptionalIncomingHttpHeaders,
+                      actual: NotOptionalIncomingHttpHeaders): boolean {
   for (const key in pattern) {
     if (pattern.hasOwnProperty(key)) {
       if (ignoredHeaders.includes(key)) { continue; }
@@ -147,9 +150,10 @@ function matchHeaders(pattern: IncomingHttpHeaders, actual: IncomingHttpHeaders)
       if (Array.isArray(patternValue) && !Array.isArray(actualValue)) {
         if (actualValue.indexOf(', ') === -1) { return false; }
         actualValue = actualValue.split(', ');
-        const matches = patternValue.every((pv) => actualValue.includes(pv));
+        const matches = patternValue.every(pv => actualValue.includes(pv));
         if (!matches) { return false; }
       }
+      // TODO: what if patternValue and actualValue are both single values (not array) and notequal?
     }
   }
   return true;
@@ -159,20 +163,29 @@ export class InteractionCatalog extends EventEmitter {
   public interactionHistory: Interaction[];
   public interactions: Interaction[];
   public previouslyMatched: Set<string>;
-  private storagePath: string;
+  public storagePath?: string;
 
-  constructor() {
+  constructor(storagePath: string) {
     super();
+    this.storagePath = storagePath;
     this.reset();
   }
 
   public loadPath(storagePath: string): Promise<void> {
     this.storagePath = storagePath;
+    return this.load();
+  }
+
+  public load(): Promise<void> {
+    if (this.storagePath === undefined) {
+      return Promise.reject(new Error('No storage path set'));
+    }
     return readDir(this.storagePath)
       .catch((error) => {
         // if the scenario dir is missing, just continue as if its an empty scenario
         if (error.code === 'ENOENT') {
-          const noPathError: Error & { code?: string } = new Error(`Path not found: ${this.storagePath}`);
+          const noPathError: Error & { code?: string } =
+            new Error(`Path not found: ${this.storagePath}`);
           noPathError.code = 'ECATALOGNOPATH';
           throw noPathError;
         }
@@ -181,9 +194,9 @@ export class InteractionCatalog extends EventEmitter {
         throw error;
       })
       .then((filenames) => {
-        return Promise.all(filenames.map((f) => parseFile(resolvePath(this.storagePath, f))));
+        return Promise.all(filenames.map(f => parseFile(resolvePath(this.storagePath, f))));
       })
-      .then((interactionsAndSkipped) => interactionsAndSkipped.filter((i) => !!i))
+      .then(interactionsAndSkipped => interactionsAndSkipped.filter(i => !!i))
       .then((interactions) => {
         log(`interactions loaded from path: ${interactions.length}`);
         this.interactions = interactions as Interaction[];
@@ -207,7 +220,7 @@ export class InteractionCatalog extends EventEmitter {
   // but it could be split up
   public findMatchingInteraction(req: Request): Interaction | undefined {
     const match = this.interactions
-      .filter((interaction) => !this.previouslyMatched.has(interaction.request.id))
+      .filter(interaction => !this.previouslyMatched.has(interaction.request.id))
       .filter((interaction) => {
         log('testing request properties');
         if (interaction.direction !== 'outgoing') {
@@ -226,7 +239,7 @@ export class InteractionCatalog extends EventEmitter {
           log('interaction eliminated: url');
           return false;
         }
-        if (!matchHeaders(requestInfo.headers, req.headers)) {
+        if (!matchHeaders(requestInfo.headers, (req.headers as NotOptionalIncomingHttpHeaders))) {
           log('interaction eliminated: headers');
           return false;
         }
@@ -246,7 +259,7 @@ export class InteractionCatalog extends EventEmitter {
         direction: match.direction,
         request: {
           body: (req.body as Buffer),
-          headers: req.headers,
+          headers: (req.headers as NotOptionalIncomingHttpHeaders),
           httpVersion: req.httpVersion,
           id: match.request.id,
           method: req.method,
@@ -261,7 +274,8 @@ export class InteractionCatalog extends EventEmitter {
     return match;
   }
 
-  // called when an incoming request (one sent to the App) gets a response - the body isn't yet complete
+  // called when an incoming request (one sent to the App) gets a response - the body isn't yet
+  // complete
   // TODO: figure out if the response actually matched what it said in the interaction
   public onIncomingResponse(interaction: Interaction, reqTimestamp: number, res: IncomingMessage) {
     getRawBody(res)
@@ -272,7 +286,7 @@ export class InteractionCatalog extends EventEmitter {
           requestTimestamp: reqTimestamp,
           response: {
             body,
-            headers: res.headers,
+            headers: (res.headers as NotOptionalIncomingHttpHeaders),
             httpVersion: res.httpVersion,
             requestId: interaction.request.id,
             statusCode: res.statusCode as number,
@@ -283,17 +297,19 @@ export class InteractionCatalog extends EventEmitter {
         });
       })
       .catch((error) => {
-        log(`An error occurred while reading the incoming request's response body: ${error.message}`);
+        log('An error occurred while reading the incoming request\'s response body: ' +
+          `${error.message}`);
       });
   }
 
   // called when an outgoing request (one set to steno) is finished writing the response
   public onOutgoingResponse(requestId: string) {
-    const interaction = this.interactionHistory.find((i) => i.request.id === requestId);
+    const interaction = this.interactionHistory.find(i => i.request.id === requestId);
     if (interaction) {
       interaction.responseTimestamp = Date.now();
     } else {
-      log('could not find request in history when capturing outgoing request\'s response timestamp');
+      log('could not find request in history when capturing outgoing request\'s' +
+        ' response timestamp');
     }
   }
 
@@ -304,13 +320,15 @@ export class InteractionCatalog extends EventEmitter {
     const sortedInteractions = this.interactions.slice()
       .sort((a, b) => (b.timestamp as number) - (a.timestamp as number));
     this.interactions
-      .filter((interaction) => !this.previouslyMatched.has(interaction.request.id))
-      .filter((interaction) => interaction.direction === 'incoming')
+      .filter(interaction => !this.previouslyMatched.has(interaction.request.id))
+      .filter(interaction => interaction.direction === 'incoming')
       .sort((a, b) => (b.timestamp as number) - (a.timestamp as number))
       .filter((unmatched) => {
         return sortedInteractions
-          .filter((interaction) => (interaction.timestamp as number) < (unmatched.timestamp as number))
-          .every((pi) => this.previouslyMatched.has(pi.request.id));
+          .filter((interaction) => {
+            return (interaction.timestamp as number) < (unmatched.timestamp as number);
+          })
+          .every(pi => this.previouslyMatched.has(pi.request.id));
       })
       .forEach((i) => {
         this.previouslyMatched.add(i.request.id);

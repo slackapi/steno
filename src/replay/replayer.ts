@@ -1,40 +1,41 @@
 import { raw as rawParser } from 'body-parser';
-import Debug = require('debug');
+import debug = require('debug');
 import express = require('express');
 import { ClientRequest, createServer, IncomingMessage, RequestOptions, Server } from 'http';
-import { Dictionary } from 'lodash';
-import cloneDeep = require('lodash.clonedeep');
-import { PrintFn } from 'steno';
-import { format as urlFormat, parse as urlParse, Url } from 'url';
+import cloneDeep = require('lodash.clonedeep'); // tslint:disable-line import-name
+import { PrintFn, Service } from 'steno';
+import { format as urlFormat, parse as urlParse, Url, URL } from 'url';
 import { flattenHeaderValues, requestFunctionForTargetUrl, responseBodyToString } from '../common';
 import { Interaction, InteractionCatalog } from './interaction-catalog';
+import { Device } from '../controller';
 
-const log = Debug('steno:replayer');
+const log = debug('steno:replayer');
 
-export class Replayer {
+export class Replayer implements Service, Device {
   private server: Server;
   private app: express.Application;
   private port: string;
   private requestFn:
-    (options: RequestOptions | string | URL, callback?: (res: IncomingMessage) => void) => ClientRequest;
+    (options: RequestOptions | string | URL,
+     callback?: (res: IncomingMessage) => void) => ClientRequest;
   private targetUrl: Url;
   private catalog: InteractionCatalog;
   private print: PrintFn;
 
-  constructor(targetUrl: string, port: string, print: PrintFn) {
+  constructor(targetUrl: string, port: string, storagePath: string, print: PrintFn) {
     this.app = this.createApp();
     this.port = port;
     this.server = createServer(this.app);
     this.targetUrl = urlParse(targetUrl);
     this.requestFn = requestFunctionForTargetUrl(this.targetUrl);
-    this.catalog = new InteractionCatalog();
+    this.catalog = new InteractionCatalog(storagePath);
     this.print = print;
 
     this.catalog.on('clientReqTrigger', this.clientInteraction.bind(this));
   }
 
-  public start(path: string): Promise<void> {
-    log(`replayer start with path: ${path}`);
+  public start(): Promise<void> {
+    log(`replayer start with path: ${this.catalog.storagePath}`);
     return Promise.all([
       new Promise((resolve, reject) => {
         this.server.on('error', reject);
@@ -44,7 +45,7 @@ export class Replayer {
           resolve();
         });
       }),
-      this.catalog.loadPath(path),
+      this.catalog.load(),
     ])
     .catch((error) => {
       if (error.code === 'ECATALOGNOPATH') {
@@ -53,10 +54,10 @@ export class Replayer {
       }
       throw error;
     })
-    .then(() => {}); // tslint:disable-line no-empty
+    .then(() => {});
   }
 
-  public updatePath(newPath: string): Promise<void> {
+  public setStoragePath(newPath: string): Promise<void> {
     return this.catalog.loadPath(newPath);
   }
 
@@ -71,7 +72,8 @@ export class Replayer {
   public getHistory() {
     const scrubbedHistory: any[] = this.catalog.interactionHistory.map((interaction) => {
       const historyRequestRecord: any = {
-        body: interaction.request.body ? (interaction.request.body as Buffer).toString() : '',
+        body: interaction.request.body !== undefined ?
+          (interaction.request.body as Buffer).toString() : '',
         headers: flattenHeaderValues(interaction.request.headers),
         method: interaction.request.method,
         timestamp: interaction.requestTimestamp,
@@ -98,12 +100,13 @@ export class Replayer {
     }, { lowest: Date.now(), highest: 0 });
     const duration = highest - lowest;
     const unmatchedInteractions = this.catalog.interactions
-      .filter((i) => !this.catalog.previouslyMatched.has(i.request.id));
+      .filter(i => !this.catalog.previouslyMatched.has(i.request.id));
     const historyMeta: any = {
-      durationMs: duration < 0 ? null : duration, // guard for having a val when no interactions took place
+      // guard for having a val when no interactions took place
+      durationMs: duration < 0 ? null : duration,
       unmatchedCount: {
-        incoming: unmatchedInteractions.filter((i) => i.direction === 'incoming').length,
-        outgoing: unmatchedInteractions.filter((i) => i.direction === 'outgoing').length,
+        incoming: unmatchedInteractions.filter(i => i.direction === 'incoming').length,
+        outgoing: unmatchedInteractions.filter(i => i.direction === 'outgoing').length,
       },
     };
 
@@ -120,7 +123,7 @@ export class Replayer {
     app.use((req, res, next) => {
       log('outgoing request');
       const interaction = this.catalog.findMatchingInteraction(req);
-      if (interaction) {
+      if (interaction !== undefined) {
         const respInfo = interaction.response;
         res.writeHead(respInfo.statusCode, respInfo.statusMessage, respInfo.headers);
         res.end(respInfo.body, () => {

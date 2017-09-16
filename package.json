@@ -7,13 +7,13 @@
     "steno": "bin/cli.js"
   },
   "scripts": {
-    "test": "npm run tslint && echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
-    "clean": "rimraf dist",
+    "test": "npm run build && ava",
+    "build": "tsc -p tsconfig.json",
+    "clean": "rimraf build",
     "watch": "tsc -w",
-    "tslint": "tslint -c tslint.json -p tsconfig.json",
-    "start": "npm run clean && npm run build && node bin/cli.js",
-    "dist": "npm run clean && npm run build && pkg --out-path pkg ."
+    "lint": "tslint --project . --type-check src/**/*.ts",
+    "start": "node bin/cli.js",
+    "pkg": "npm run clean && npm run lint && npm run build && pkg --out-path pkg ."
   },
   "author": "Ankur Oberoi <aoberoi@gmail.com>",
   "license": "MIT",
@@ -22,11 +22,14 @@
     "npm": "^5.1.0"
   },
   "devDependencies": {
-    "@types/node": "^8.0.7",
-    "pkg": "^4.1.1",
-    "rimraf": "^2.6.1",
-    "tslint": "^5.5.0",
-    "typescript": "^2.4.1"
+    "ava": "^0.22.0",
+    "babel-core": "^6.26.0",
+    "babel-plugin-rewire": "^1.1.0",
+    "pkg": "^4.2.4",
+    "rimraf": "^2.6.2",
+    "tslint": "^5.7.0",
+    "tslint-config-airbnb": "^5.3.0",
+    "typescript": "^2.5.2"
   },
   "dependencies": {
     "@types/body-parser": "^1.16.4",
@@ -34,6 +37,7 @@
     "@types/express": "^4.0.36",
     "@types/lodash.clonedeep": "^4.5.2",
     "@types/mkdirp": "^0.5.0",
+    "@types/node": "^8.0.28",
     "@types/normalize-url": "^1.9.0",
     "@types/uuid": "^3.4.0",
     "@types/yargs": "^8.0.1",
@@ -48,5 +52,19 @@
     "raw-body": "^2.2.0",
     "uuid": "^3.1.0",
     "yargs": "^8.0.2"
+  },
+  "ava": {
+    "files": [
+      "src/**/*.spec.js"
+    ],
+    "babel": {
+      "plugins": [
+        "rewire"
+      ],
+      "presets": [
+        "@ava/stage-4",
+        "@ava/transform-test-files"
+      ]
+    }
   }
 }
