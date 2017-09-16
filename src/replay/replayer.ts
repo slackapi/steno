@@ -150,7 +150,7 @@ export class Replayer {
       this.catalog.onIncomingResponse(interaction, requestTimestamp, response);
     });
     request.end(requestInfo.body, () => {
-      log('outgoing request sent');
+      log('incoming request sent');
     });
   }
 }
