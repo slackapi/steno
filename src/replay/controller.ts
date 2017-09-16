@@ -2,8 +2,6 @@ import bodyParser = require('body-parser');
 import Debug = require('debug');
 import express = require('express');
 import { createServer, Server } from 'http';
-import normalizePort = require('normalize-port');
-import normalizeUrl = require('normalize-url');
 import { join as pathJoin } from 'path';
 import { PrintFn } from 'steno';
 import { Replayer } from './replayer';
@@ -91,7 +89,7 @@ export function startReplayingController(
   incomingRequestTargetUrl: string, controlPort: string, outPort: string, scenarioName: string, print: PrintFn,
 ): Promise<void> {
   const controller = new ReplayingController(
-    normalizeUrl(incomingRequestTargetUrl), normalizePort(controlPort), normalizePort(outPort), scenarioName, print,
+    incomingRequestTargetUrl, controlPort, outPort, scenarioName, print,
   );
   return controller.start();
 }

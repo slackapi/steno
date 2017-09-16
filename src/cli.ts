@@ -1,4 +1,6 @@
 import Debug = require('debug');
+import normalizePort = require('normalize-port');
+import normalizeUrl = require('normalize-url');
 import yargs = require('yargs');
 import { startRecordingController } from './record/controller';
 import { startReplayingController } from './replay/controller';
@@ -43,10 +45,10 @@ const parser = yargs
     log('record arguments %O', argv);
     // TODO: set a base path for where scenarios are stored
     startRecordingController(
-      argv.appBaseUrl,
-      argv.controlPort,
-      argv.inPort,
-      argv.outPort,
+      normalizeUrl(argv.appBaseUrl),
+      normalizePort(argv.controlPort),
+      normalizePort(argv.inPort),
+      normalizePort(argv.outPort),
       argv.scenarioName,
       print,
     );
@@ -78,9 +80,9 @@ const parser = yargs
     log('replay arguments %O', argv);
     // TODO: set a base path for where scenarios are stored
     startReplayingController(
-      argv.appBaseUrl,
-      argv.controlPort,
-      argv.outPort,
+      normalizeUrl(argv.appBaseUrl),
+      normalizePort(argv.controlPort),
+      normalizePort(argv.outPort),
       argv.scenarioName,
       print,
     );

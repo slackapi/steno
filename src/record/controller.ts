@@ -2,8 +2,6 @@ import bodyParser = require('body-parser');
 import Debug = require('debug');
 import express = require('express');
 import { createServer, Server } from 'http';
-import normalizePort = require('normalize-port');
-import normalizeUrl = require('normalize-url');
 import { join as pathJoin } from 'path';
 import { PrintFn } from 'steno';
 import { ProxyTargetConfig, ProxyTargetRule } from './http-proxy';
@@ -123,9 +121,9 @@ export function startRecordingController(
   };
 
   const controller = new RecordingController(
-    { targetUrl: normalizeUrl(incomingRequestTargetUrl) },
+    { targetUrl: incomingRequestTargetUrl },
     { targetUrl: outTargetUrl, rules: [hooksSubdomainRewriteRule] },
-    normalizePort(controlPort), normalizePort(inPort), normalizePort(outPort), scenarioName, print,
+    controlPort, inPort, outPort, scenarioName, print,
   );
   return controller.start();
 }
