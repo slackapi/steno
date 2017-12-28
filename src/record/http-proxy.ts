@@ -3,7 +3,7 @@ import { EventEmitter } from 'events';
 import { ClientRequest, createServer, IncomingMessage, RequestOptions, Server,
   ServerResponse } from 'http';
 import cloneDeep = require('lodash.clonedeep'); // tslint:disable-line import-name
-import getRawBody = require('raw-body');
+import rawBody = require('raw-body');
 import { format as urlFormat, parse as urlParse, Url, URL } from 'url';
 import { promisify } from 'util';
 import uuid = require('uuid/v4'); // tslint:disable-line import-name
@@ -77,7 +77,7 @@ export class HttpProxy extends EventEmitter {
     const proxyRequest = this.requestFn(proxyReqOptions);
       // TODO: are response trailers really set on `req`?
     req.pipe(proxyRequest);
-    getRawBody(req)
+    rawBody(req)
       .then((body) => {
         requestInfo.body = body;
         requestInfo.trailers = cloneDeep(req.trailers);
@@ -107,7 +107,7 @@ export class HttpProxy extends EventEmitter {
       });
       // TODO: are response trailers really set on `res`?
       proxyResponse.pipe(res);
-      getRawBody(proxyResponse)
+      rawBody(proxyResponse)
         .then((body) => {
           responseInfo.body = body;
           responseInfo.trailers = cloneDeep(proxyResponse.trailers);

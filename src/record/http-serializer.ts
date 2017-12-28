@@ -37,9 +37,8 @@ async function getFilenameAndOpen(baseFilename: string): Promise<{ filename: str
     } catch (error) {
       if (error.code === 'EEXIST') {
         return next(attempt + 1);
-      } else {
-        throw error;
       }
+      throw error;
     }
   };
   return await next(0);

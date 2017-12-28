@@ -3,6 +3,7 @@ import { EventEmitter } from 'events';
 import { Request } from 'express';
 import fs = require('fs');
 import { IncomingMessage } from 'http';
+import isUndefined = require('lodash.isundefined'); // tslint:disable-line import-name
 import { basename, resolve as resolvePath } from 'path';
 import getRawBody = require('raw-body'); // tslint:disable-line import-name
 import { RequestInfo, ResponseInfo, NotOptionalIncomingHttpHeaders } from 'steno';
@@ -27,7 +28,7 @@ function parseRequestData(requestData: string): RequestInfo {
   const [firstLine, ...lines] = requestData.split('\n');
   const [method, url, httpData] = firstLine.split(' ');
   let [, httpVersion] = httpData.split('/'); // tslint:disable-line prefer-const
-  if (!httpVersion) { httpVersion = '1.1'; }
+  if (httpVersion === '' || isUndefined(httpVersion)) { httpVersion = '1.1'; }
 
   const emptyLineIndex = lines.indexOf('');
   if (emptyLineIndex === -1) {
@@ -63,7 +64,7 @@ function parseResponseData(responseData: string, requestId: string): ResponseInf
   log(`response data: ${responseData}`);
   const [, , firstLine, ...lines] = responseData.split('\n');
   const firstLineMatch = /^HTTP\/([\w.]+) (\d+) ([\w ]+)$/ig.exec(firstLine);
-  if (!firstLineMatch) {
+  if (firstLineMatch === null) {
     log(`first line: ${firstLine}`);
     throw Error('Invalid response data: first line does not match format');
   }
@@ -90,7 +91,7 @@ function parseResponseData(responseData: string, requestId: string): ResponseInf
 
   // HACK: removing content-encoding so that we don't need to deflate or gzip the body before
   // transporting
-  if (headers['content-encoding']) {
+  if (headers.propertyIsEnumerable('content-encoding')) {
     delete headers['content-encoding'];
     delete headers['content-length'];
   }
@@ -116,7 +117,7 @@ function parseFile(filename: string): Promise<Interaction | undefined> {
       const [requestData, responseData] = fileContents.split('-----');
       // NOTE: why won't typescript acknowledge the fact that any of the destructured values could
       // be undefined?
-      if (!requestData || !responseData) {
+      if (isUndefined(requestData) || isUndefined(responseData)) {
         log(`cannot parse interaction from ${filename}`);
         // skip
         return Promise.resolve(undefined);
@@ -141,7 +142,7 @@ function matchHeaders(pattern: NotOptionalIncomingHttpHeaders,
   for (const key in pattern) {
     if (pattern.hasOwnProperty(key)) {
       if (ignoredHeaders.includes(key)) { continue; }
-      if (!actual[key]) { return false; }
+      if (!actual.propertyIsEnumerable(key)) { return false; }
       let patternValue = pattern[key];
       let actualValue = actual[key];
       if (key === 'set-cookie' && !Array.isArray(patternValue)) {
@@ -196,7 +197,7 @@ export class InteractionCatalog extends EventEmitter {
       .then((filenames) => {
         return Promise.all(filenames.map(f => parseFile(resolvePath(this.storagePath, f))));
       })
-      .then(interactionsAndSkipped => interactionsAndSkipped.filter(i => !!i))
+      .then(interactionsAndSkipped => interactionsAndSkipped.filter(i => !isUndefined(i)))
       .then((interactions) => {
         log(`interactions loaded from path: ${interactions.length}`);
         this.interactions = interactions as Interaction[];
@@ -243,7 +244,7 @@ export class InteractionCatalog extends EventEmitter {
           log('interaction eliminated: headers');
           return false;
         }
-        if (requestInfo.body) {
+        if (!isUndefined(requestInfo.body)) {
           if (Buffer.compare(requestInfo.body, req.body) !== 0) {
             log('interaction eliminated: body');
             return false;
@@ -253,7 +254,7 @@ export class InteractionCatalog extends EventEmitter {
       })
       .sort((a, b) => (b.timestamp as number) - (a.timestamp as number))
       .shift();
-    if (match) {
+    if (!isUndefined(match)) {
       this.previouslyMatched.add(match.request.id);
       this.interactionHistory.push({
         direction: match.direction,
@@ -305,7 +306,7 @@ export class InteractionCatalog extends EventEmitter {
   // called when an outgoing request (one set to steno) is finished writing the response
   public onOutgoingResponse(requestId: string) {
     const interaction = this.interactionHistory.find(i => i.request.id === requestId);
-    if (interaction) {
+    if (!isUndefined(interaction)) {
       interaction.responseTimestamp = Date.now();
     } else {
       log('could not find request in history when capturing outgoing request\'s' +
