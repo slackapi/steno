@@ -7,11 +7,11 @@
     "steno": "bin/cli.js"
   },
   "scripts": {
-    "test": "npm run build && ava",
+    "test": "npm run build && echo \"Error: no test specified\" && exit 1",
     "build": "tsc -p tsconfig.json",
     "clean": "rimraf build",
     "watch": "tsc -w",
-    "lint": "tslint --project . --type-check src/**/*.ts",
+    "lint": "tslint --project . src/**/*.ts",
     "start": "node bin/cli.js",
     "pkg": "npm run clean && npm run lint && npm run build && pkg --out-path pkg ."
   },
@@ -22,49 +22,32 @@
     "npm": "^5.1.0"
   },
   "devDependencies": {
-    "ava": "^0.22.0",
-    "babel-core": "^6.26.0",
-    "babel-plugin-rewire": "^1.1.0",
-    "pkg": "^4.2.4",
+    "@types/body-parser": "^1.16.8",
+    "@types/debug": "0.0.30",
+    "@types/express": "^4.11.0",
+    "@types/lodash.clonedeep": "^4.5.3",
+    "@types/mkdirp": "^0.5.2",
+    "@types/node": "^8.0.28",
+    "@types/normalize-url": "^1.9.1",
+    "@types/uuid": "^3.4.3",
+    "@types/yargs": "^8.0.1",
+    "pkg": "^4.2.6",
     "rimraf": "^2.6.2",
-    "tslint": "^5.7.0",
-    "tslint-config-airbnb": "^5.3.0",
-    "typescript": "^2.5.2"
+    "tslint": "^5.8.0",
+    "tslint-config-airbnb": "^5.4.2",
+    "typescript": "^2.6.2"
   },
   "dependencies": {
-    "@types/body-parser": "^1.16.4",
-    "@types/debug": "0.0.29",
-    "@types/express": "^4.0.36",
-    "@types/lodash.clonedeep": "^4.5.2",
-    "@types/mkdirp": "^0.5.0",
-    "@types/node": "^8.0.28",
-    "@types/normalize-url": "^1.9.0",
-    "@types/uuid": "^3.4.0",
-    "@types/yargs": "^8.0.1",
-    "body-parser": "^1.17.2",
+    "body-parser": "^1.18.2",
     "debug": "^2.6.8",
     "express": "^4.15.4",
     "js-string-escape": "^1.0.1",
     "lodash.clonedeep": "^4.5.0",
     "mkdirp": "^0.5.1",
     "normalize-port": "^1.0.0",
-    "normalize-url": "^1.9.1",
-    "raw-body": "^2.2.0",
+    "normalize-url": "^2.0.1",
+    "raw-body": "^2.3.2",
     "uuid": "^3.1.0",
     "yargs": "^8.0.2"
-  },
-  "ava": {
-    "files": [
-      "src/**/*.spec.js"
-    ],
-    "babel": {
-      "plugins": [
-        "rewire"
-      ],
-      "presets": [
-        "@ava/stage-4",
-        "@ava/transform-test-files"
-      ]
-    }
   }
 }

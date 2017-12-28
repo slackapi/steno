@@ -23,6 +23,7 @@ export function requestFunctionForTargetUrl(url: Url) {
   return httpReqFn;
 }
 
+// TODO: convert away from IncomingHttpHeaders
 export function fixRequestHeaders(
   hostname?: string, headers?: OutgoingHttpHeaders,
 ): IncomingHttpHeaders {
@@ -48,6 +49,7 @@ export function fixRequestHeaders(
   return headersCopy;
 }
 
+// TODO: convert away from IncomingHttpHeaders
 export function flattenHeaderValues(headers: IncomingHttpHeaders) {
   const originalHeaders = cloneDeep(headers);
   const flattenedHeaders: { [key: string]: string } = {};

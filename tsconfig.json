@@ -9,6 +9,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "strictNullChecks": true,
+    "strictFunctionTypes": true,
     "noFallthroughCasesInSwitch": true,
     "inlineSourceMap": true,
     "pretty": true,
