@@ -15,13 +15,11 @@ export default function main() {
       desc: 'Start steno in record mode.',
       boolean: true,
       global: false,
-      conflicts: 'replay',
     })
     .option('replay', {
       desc: 'Start steno in replay mode.',
       boolean: true,
       global: false,
-      conflicts: 'record',
     })
     .option('internal-url', {
       alias: 'app',
@@ -112,6 +110,13 @@ export default function main() {
   const argv = parser.parse(process.argv.slice(2));
 
   log('arguments %O', argv);
+
+  // Workaround for https://github.com/yargs/yargs/issues/929
+  if (argv.record && argv.replay) {
+    console.log('The record and replay options cannot be used together.\n');
+    parser.showHelp();
+    return;
+  }
 
   const mode: ControllerMode | undefined = (() => {
     if (argv.record) { return 'record'; }
