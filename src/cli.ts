@@ -117,6 +117,7 @@ export default function main() {
     if (argv.record) { return 'record'; }
     if (argv.replay) { return 'replay'; }
     // legacy command compatibility
+    // TODO: explicitly warn user when using deprecated command
     const firstPositionalArgument = argv._[0];
     if (firstPositionalArgument === 'record') { return 'record'; }
     if (firstPositionalArgument === 'replay') { return 'replay'; }
