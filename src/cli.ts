@@ -197,7 +197,8 @@ function defaultOutgoingRequestRules(outTargetHost: string): ProxyTargetRule[] {
   return [hooksSubdomainRewriteRule];
 }
 
-// TODO: how do i get this module augmentation out of this file?
+// can be removed after the following PR lands:
+// https://github.com/DefinitelyTyped/DefinitelyTyped/pull/22628
 declare module 'yargs' {
   interface Argv {
     wrap(sentinal: null): Argv;
