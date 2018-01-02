@@ -1,12 +1,12 @@
 # Getting Started with Steno
 
-Steno is your sidekick for developing tests for your Slack app. Use Steno to record and replay HTTP requests and responses to and from your app. Then, you'll be able to run tests on your app without worrying about manually recreating state in actual Slack workspaces (or teams) or manually reproducing events. Hello, automation and continuous integation! :wave:
+Steno is your sidekick for developing tests for your Slack app. Use Steno to record and replay HTTP requests and responses to and from your app. Then, you'll be able to run tests on your app without worrying about manually recreating state in actual Slack workspaces or manually reproducing events. Hello, automation and continuous integation! :wave:
 
 It doesn't matter which language you chose to program with or how your app is structured. Steno is a CLI tool that starts a server outside your process, so as long as your app speaks HTTP (all Slack apps do), you're ready to go!
 
 ## The Workflow
 
-Steno is easiest to use if you follow this workflow. For many of you, this might look familiar- it's based on tried-and-true integration testing patterns. But let's get out of the jargon and jump straight into it.
+Steno is easiest to use if you follow this workflow. For many of you, this might look familiar -- it's based on tried-and-true integration testing patterns. But let's get out of the jargon and jump straight into it.
 
 1. **Pick a behavior in your app that you want to test.**
 
@@ -14,31 +14,31 @@ Steno is easiest to use if you follow this workflow. For many of you, this might
 
 2. **It's time to record**, smile! Just kidding, no cameras please :camera:.
 
-   In **record mode** Steno helps you build **scenarios**, a set of requests and responses that correspond to behaviors or occurrences inside your app. A scenario is represented by a directory inside your project. That directory contains a set of text files; each text file describes one HTTP request and response. The first time you run Steno in record mode, it will create a scenarios folder for you in your working directory.
+   In **record mode** Steno helps you build **scenarios**, a set of requests and responses that correspond to behaviors inside your app. A scenario is represented by a directory inside your project. That directory contains a set of text files; each text file describes one HTTP request and response. The first time you run Steno in record mode, it will create a scenarios folder for you in your working directory.
 
    Start by choosing a descriptive name for your scenario, e.g. `successfull_installation_will_dm_installing_user`.
 
-   Running `steno record` will prompt Steno to start a local server- by default, `http://localhost:3000/...`. Adjust your code to send requests to that server instead of `https://slack.com/...`.
+   Running `steno --record` will prompt Steno to start a local server -- by default, `http://localhost:3000/...`. Adjust your code to send requests to that server instead of `https://slack.com/...`.
 
-   Steno will also record requests that are coming **into** your app from the Slack Platform. You may already have a tunneling tool like [ngrok set up](https://api.slack.com/tutorials/tunneling-with-ngrok) to let the Slack Platform reach your app's local server. You can continue to use it, but instead of wiring ngrok up to forward requests directly to a port your app is listening on, substitute the port Steno is listening on- by default, 3010.
+   Steno will also record requests that are coming **into** your app from the Slack Platform, such as interactive messages or the events API. You may already have a tunneling tool like [ngrok set up](https://api.slack.com/tutorials/tunneling-with-ngrok) to let the Slack Platform reach your app's local server. You can continue to use it, but instead of wiring ngrok up to forward requests directly to a port your app is listening on, substitute the port Steno is listening on -- by default, 3010.
 
-   The last piece of wiring we need is to let Steno know where to forward those requests after they've been received locally. For example, if the app is listening on port 5000, the `appBaseUrl` is `localhost:5000`.
+   The last piece of wiring we need is to let Steno know how to forward those requests to your app. This is specified using the `--internal-url` option. For example, if the app is listening on port 5000, the `--internal-url` is `localhost:5000`.
 
    Now we're ready to record. Open your terminal, navigate to a test directory in your project, and launch the tool in record mode:
 
-   `steno record localhost:5000 --scenario-name successfull_installation_will_dm_installing_user`
+   `steno --record --internal-url localhost:5000 --scenario-name successfull_installation_will_dm_installing_user`
 
    Then run your app through the scenario you've named, and Steno will record the requests and responses that are sent and received.
 
 3. With your sidekick Steno :couple: standing by, you can **write your first test.**
 
-   Pick your favorite test runner and write a test case that simulates the behavior you chose. In the case of the DM on install example, you would write a case that completes the OAuth flow for installing your Slack app; your app should behave by exchanging the code for an access token, storing the token, and sending a DM to the installing user. Conclude your test case by asserting that your app is in the state it should be, namely that the token has been stored. But how do we assert that the DM was sent containing the message we intended to be sent? Read on, and we'll find out.
+   Pick your favorite test runner and write a test case that stimulates the behavior you chose. In the case of the DM on install example, you would write a case that completes the OAuth flow for installing your Slack app; your app should behave by exchanging the code for an access token, storing the token, and sending a DM to the installing user. Conclude your test case by asserting that your app is in the state it should be, namely that the token has been stored. But how do we assert that the DM was sent containing the message we intended to be sent? Read on, and we'll find out.
 
 4. Use Steno's **control API** to load scenarios :vhs:.
 
-   Terminate the `steno` command in your terminal and inspect your working directory. You should find that there's a new directory called `scenarios/`. Inside that directory, you should see another directory called `successfull_installation_will_dm_installing_user` which contains the record of all the HTTP interactions your app and Slack just made.
+   Terminate the `steno` command in your terminal (<kbd>Ctrl</kbd> + <kbd>C</kbd>) and inspect your working directory. You should find that there's a new directory called `scenarios/`. Inside that directory, you should see another directory called `successfull_installation_will_dm_installing_user` which contains the record of all the HTTP interactions your app and Slack just made.
 
-   Next, we'll need to add some setup code to our test case so that Steno is prepared to replay this particular scenario. This can be done by making a request to Steno's control API, which by default is served on port 4000. For example, if you were to add this to your test case using curl, it would look like this:
+   Next, we'll need to add some setup code to our test case so that Steno is prepared to replay this particular scenario. This can be done by making a request to Steno's control API, which by default is served on port 4000. For example, if you were to perform this in your test case using curl, it would look like this:
 
    `curl -X POST -H "Content-Type: application/json" -d "{ "name":"successfull_installation_will_dm_installing_user" }" http://localhost:4000/start`
 
@@ -118,9 +118,9 @@ Steno is easiest to use if you follow this workflow. For many of you, this might
 
    Let's go back to the command line and launch steno with a slightly different command:
 
-   `steno replay localhost:5000`
+   `steno --replay --internal-url localhost:5000`
 
-   Run your new test case and watch those assertions succeed :white_check_mark:! (and, if not, maybe that's a good thing- you just caught a bug).
+   Run your new test case and watch those assertions succeed :white_check_mark:! (and, if not, maybe that's a good thing -- you just caught a bug).
 
 7. Scrub the code and the scenarios of any tokens or secrets :speak_no_evil:, **commit them to your project, rinse and repeat**! Now you can add running Steno in replay mode as a step before starting your test runner in your testing scripts. If you have continuous integration set up, you can rest assured that with every commit along the way you haven't broken your existing behavior :massage:.
 
@@ -146,53 +146,30 @@ Steno comes with a `--help` option to help you navigate the command line interfa
 
 ```
 $ ./steno --help
+steno [command]
+
 Commands:
-  record <appBaseUrl>  start recording scenarios
-  replay <appBaseUrl>  start replaying scenarios
+  steno record <appBaseUrl>  (DEPRECATED: use --record) start recording scenarios
+  steno replay <appBaseUrl>  (DEPRECATED: use --replay) start replaying scenarios
 
 Options:
-  --help  Show help                                                    [boolean]
-```
+  --help                 Show help  [boolean]
+  --version              Show version number  [boolean]
+  --record               Start steno in record mode.  [boolean]
+  --replay               Start steno in replay mode.  [boolean]
+  --internal-url, --app  The internal URL where your application is listening. In record mode, requests served from in-port are forwarded to this URL. In replay mode, incoming interactions' requests are sent to this URL.  [string] [default: "localhost:5000"]
+  --in-port, --in        The port where incoming requests are served by forwarding to the internal URL. Only valid in record mode.  [string] [default: "3010"]
+  --out-port, --out      The port where outgoing requests are served either (in record mode) by forwarding to the external service (Slack API) or (in replay mode) by responding from matched interactions in the current scenario.  [string] [default: "3000"]
+  --control-port, -c     The port where the control API is served  [string] [default: "4000"]
+  --scenario-dir         The directory where all scenarios are recorded to or replayed from. Relative to current working directory.  [string] [default: "./scenarios"]
+  --scenario-name        The initial scenario. This name is used for the subdirectory of scenario-dir where interactions will be recorded to or replayed from.  [string] [default: "untitled_scenario"]
 
-Each command also has a `--help` option to get more details.
+Examples:
+  steno --record                                  Starts steno in record mode with defaults for the control-port, in-port, out-port, internal-url, scenario-dir, and scenario-name.
+  steno --record --app localhost:3000 --out 5000  Starts steno in record mode and  customizes the internal-url and out-port
+  steno --replay                                  Starts steno in replay mode with defaults for the control-port, out-port, internal-url, scenario-dir, and scenario-name.
 
-```
-$ ./steno record --help
-steno /snapshot/steno/bin/cli.js record <appBaseUrl>
-
-Options:
-  --help           Show help                                           [boolean]
-  --appBaseUrl     The base URL where all incoming requests from the Slack
-                   Platform are targetted. Incoming requestshave the protocol,
-                   hostname, and port removed, and are sent to a combination of
-                   this URL and the path.                    [string] [required]
-  --control-port   The port where the control API is served
-                                                      [string] [default: "4000"]
-  --in-port        The port where the recording server is listening for requests
-                   to forward to the Slack App (where the Slack Platform sends
-                   inbound HTTP requests)             [string] [default: "3010"]
-  --out-port       The port where the recording server is listening for requests
-                   to forward to the Slack Platform (where the Slack App sends
-                   outbound HTTP requests)            [string] [default: "3000"]
-  --scenario-name  The directory interactions will be saved to or loaded from
-                                         [string] [default: "untitled_scenario"]
-```
-
-```
-$ ./steno replay --help
-steno /snapshot/steno/bin/cli.js replay <appBaseUrl>
-
-Options:
-  --help           Show help                                           [boolean]
-  --appBaseUrl     The base URL where all recorded requests from the replaying
-                   server are targetted                      [string] [required]
-  --control-port   The port where the control API is served
-                                                      [string] [default: "4000"]
-  --out-port       The port where the replaying server is listening for requests
-                   meant for the Slack Platform (where the Slack App sends
-                   outbound HTTP requests)            [string] [default: "3000"]
-  --scenario-name  The directory interactions will be saved to or loaded from
-                                         [string] [default: "untitled_scenario"]
+for more information, visit https://slackapi.github.io/steno
 ```
 
 ### Control API
@@ -202,8 +179,6 @@ See the [control API documentation](./control) for details.
 ## Known Limitations
 
 * Replay mode will attempt to fire as many incoming requests from the scenario as possible, even in parallel, if all chronologically previous outgoing requests have already been matched. We're investigating a better solution so that you can describe scenarios where those requests should occur serially. Feedback welcome!
-
-* Response URL requests, Incoming Webhooks requests, and any requests to an origin other than 'https://slack.com' do not work yet.
 
 * Request trailers are not currently supported.
 

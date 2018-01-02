@@ -15,11 +15,13 @@ export default function main() {
       desc: 'Start steno in record mode.',
       boolean: true,
       global: false,
+      conflicts: 'replay',
     })
     .option('replay', {
       desc: 'Start steno in replay mode.',
       boolean: true,
       global: false,
+      conflicts: 'record',
     })
     .option('internal-url', {
       alias: 'app',
@@ -34,6 +36,7 @@ export default function main() {
     .option('external-url', {
       string: true,
       global: true,
+      hidden: true,
     })
     .option('in-port', {
       alias: 'in',
@@ -98,10 +101,7 @@ export default function main() {
             'customizes the internal-url and out-port')
     .example('$0 --replay', 'Starts steno in replay mode with defaults for the control-port, ' +
             'out-port, internal-url, scenario-dir, and scenario-name.')
-    // TODO: test if this works in the pkg distributable
-    .version()
     .strict()
-    .help()
     // TODO: enable the completion functionality
     // .completion()
     // TODO: enable the config functionality
@@ -113,15 +113,10 @@ export default function main() {
 
   log('arguments %O', argv);
 
-  if (argv.record && argv.replay) {
-    console.log('The record and replay options cannot be used together.\n');
-    parser.showHelp();
-    return;
-  }
-
   const mode: ControllerMode | undefined = (() => {
     if (argv.record) { return 'record'; }
     if (argv.replay) { return 'replay'; }
+    // legacy command compatibility
     const firstPositionalArgument = argv._[0];
     if (firstPositionalArgument === 'record') { return 'record'; }
     if (firstPositionalArgument === 'replay') { return 'replay'; }
