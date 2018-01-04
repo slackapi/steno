@@ -47,7 +47,7 @@ export class Replayer implements Service, Device {
     })
     .catch((error) => {
       if (error.code === 'ECATALOGNOPATH') {
-        log('starting replayer with a scenario name that wasn\'t found');
+        log(`starting replayer with a scenario name that wasn\'t found: ${error.message}`);
         return;
       }
       throw error;

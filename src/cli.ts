@@ -135,11 +135,12 @@ export default function main() {
     return;
   }
 
-  const internalUrl = argv.internalUrl || argv.appBaseUrl;
+  const internalUrl = normalizeUrl(argv.internalUrl || argv.appBaseUrl);
+  const externalUrl = argv.externalUrl ? normalizeUrl(argv.externalUrl) : undefined;
   const controller = createController(
     mode, normalizePort(argv.controlPort), argv.scenarioName, argv.scenarioDir,
-    normalizeUrl(internalUrl), normalizePort(argv.inPort),
-    undefined, normalizePort(argv.outPort),
+    internalUrl, normalizePort(argv.inPort),
+    externalUrl, normalizePort(argv.outPort),
   );
 
   analyticsPrompt()
