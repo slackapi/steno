@@ -14,11 +14,11 @@ export function requestFunctionForTargetUrl(url: Url) {
   if (url.protocol) {
     if (url.protocol === 'https:') {
       return httpsReqFn;
-    } else if (url.protocol === 'http:') {
-      return httpReqFn;
-    } else {
-      throw new Error(`Target URL protocol ${url.protocol} not supported`);
     }
+    if (url.protocol === 'http:') {
+      return httpReqFn;
+    }
+    throw new Error(`Target URL protocol ${url.protocol} not supported`);
   }
   return httpReqFn;
 }
