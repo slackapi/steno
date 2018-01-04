@@ -30,6 +30,8 @@ Steno is easiest to use if you follow this workflow. For many of you, this might
 
    Then run your app through the scenario you've named, and Steno will record the requests and responses that are sent and received.
 
+   **NOTE:** The first time you run `steno`, it will ask for your permission to report usage statistics. We highly recommend you answer `Y` to help the maintainers continually improve the tool.
+
 3. With your sidekick Steno :couple: standing by, you can **write your first test.**
 
    Pick your favorite test runner and write a test case that stimulates the behavior you chose. In the case of the DM on install example, you would write a case that completes the OAuth flow for installing your Slack app; your app should behave by exchanging the code for an access token, storing the token, and sending a DM to the installing user. Conclude your test case by asserting that your app is in the state it should be, namely that the token has been stored. But how do we assert that the DM was sent containing the message we intended to be sent? Read on, and we'll find out.

@@ -37,7 +37,9 @@ The application can be built in the following configurations:
 
 Development: `npm run build`. After a successful build, the application can be run using `node bin/cli.js <command>`.
 
-Release: `npm run pkg`. After a successful build, the individual platform binaries will be inside the `/pkg` directory.
+Development standalone binary: `npm run pkg`. After a successful build, the individual platform binaries will be inside the `/pkg` directory.
+
+Release standalone binary: `RELEASE=1 npm run pkg`. After a successful build, the individual platform binaries will be inside the `/pkg` directory.
 
 ### Testing
 
@@ -56,7 +58,8 @@ directly will automatically be built and published to the website once the chang
     *  Tag the commit with the version number. For example `v1.0.8`.
 
 2.  Distribute the release
-    *  Build the application for release
+    *  Build the application for release as a standalone binary. **Important** set the `RELEASE` environment variable
+       (e.g. `RELEASE=1 npm run pkg`).
     *  Package the application
       -  Assemble a directory with the following structure:
           .
