@@ -323,17 +323,17 @@ export class InteractionCatalog extends EventEmitter {
   private checkTriggers() {
     log('check triggers');
     const sortedInteractions = this.interactions.slice()
-      .sort((a, b) => (b.timestamp as number) - (a.timestamp as number));
+      .sort((a, b) => (a.timestamp as number) - (b.timestamp as number));
     this.interactions
       .filter(interaction => !this.previouslyMatched.has(interaction.request.id))
       .filter(interaction => interaction.direction === 'incoming')
-      .sort((a, b) => (b.timestamp as number) - (a.timestamp as number))
+      .sort((a, b) => (a.timestamp as number) - (b.timestamp as number))
       .filter((unmatched) => {
         return sortedInteractions
           .filter((interaction) => {
             return (interaction.timestamp as number) < (unmatched.timestamp as number);
           })
-          .every(pi => this.previouslyMatched.has(pi.request.id));
+          .every(pi => pi.direction === 'incoming' || this.previouslyMatched.has(pi.request.id));
       })
       .forEach((i) => {
         this.previouslyMatched.add(i.request.id);

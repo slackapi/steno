@@ -147,6 +147,7 @@ export default function main() {
     .then(() => controller.start())
     .catch((error) => {
       debug(`Terminating due to error: ${error.message}`);
+      process.exit(1);
     });
 }
 
