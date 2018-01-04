@@ -2,6 +2,7 @@
 import { PrintFn, Service } from 'steno';
 import { Device } from '../controller';
 
+import { assignErrorIdentifier } from '../common';
 import { createProxy, HttpProxy, ProxyTargetConfig } from './http-proxy';
 import { HttpSerializer } from './http-serializer';
 
@@ -55,8 +56,8 @@ export class Recorder implements Service, Device {
 
   public start(): Promise<void> {
     return Promise.all([
-      this.outgoingProxy.listen(this.outgoingPort),
-      this.incomingProxy.listen(this.incomingPort),
+      assignErrorIdentifier(this.outgoingProxy.listen(this.outgoingPort), 'outgoing'),
+      assignErrorIdentifier(this.incomingProxy.listen(this.incomingPort), 'incoming'),
       this.serializer.initialize(),
     ])
       .then(() => {
@@ -65,8 +66,23 @@ export class Recorder implements Service, Device {
         this.print(`Incoming requests forwarded to: ${this.incomingTargetUrl}`);
       })
       .catch((error) => {
+        if (error.code === 'EADDRINUSE') {
+          let option = '';
+          let port: string | number = '';
+          if (error.identifier === 'outgoing') {
+            option = '--out-port';
+            port = this.outgoingPort;
+          } else {
+            option = '--in-port';
+            port = this.incomingPort;
+          }
+          this.print(`The ${error.identifier} port ${port} is already in use. ` +
+            `Try choosing a different port by explicitly using the \`${option}\` option.`);
+          throw error;
+        }
         this.print(`Recorder failed to start: ${error.message}`);
         throw error;
       });
   }
 }
+

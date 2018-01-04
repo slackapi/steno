@@ -100,6 +100,19 @@ export function startServer(server: Server, port: string | number): Promise<void
   });
 }
 
+/**
+ * Allows a failed promise's error to be identified with a particular string as it gets thrown
+ *
+ * @param p original promise
+ * @param id an identifer that will be assigned to `error.identifier`
+ */
+export function assignErrorIdentifier<T>(p: Promise<T>, id: string): Promise<T> {
+  return p.catch((error) => {
+    error.identifier = id;
+    throw error;
+  });
+}
+
 
 /**
  * TypeScript-specific helper to resolve errors in functions where a return type is in the
