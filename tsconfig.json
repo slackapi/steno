@@ -4,9 +4,23 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "strictNullChecks": true,
-    "sourceMap": true,
-    "outDir": "dist",
+    "strictFunctionTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "inlineSourceMap": true,
+    "pretty": true,
+    "lib":[
+      "es2017"
+    ],
+    "types": [
+      "node"
+    ],
+    "rootDir": "src",
+    "outDir": "build",
     "baseUrl": ".",
     "paths":{
       "*": [
@@ -15,7 +29,10 @@
       ]
     }
   },
-  "include":[
-    "src/**/*"
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules/**"
   ]
 }

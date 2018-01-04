@@ -1,6 +1,6 @@
 import { IncomingHttpHeaders, OutgoingHttpHeaders, request as httpReqFn } from 'http';
 import { request as httpsReqFn } from 'https';
-import cloneDeep = require('lodash.clonedeep');
+import cloneDeep = require('lodash.clonedeep'); // tslint:disable-line import-name
 import { ResponseInfo } from 'steno';
 import { Url } from 'url';
 import { constants as zConstants, gunzipSync, inflateSync } from 'zlib';
@@ -23,7 +23,10 @@ export function requestFunctionForTargetUrl(url: Url) {
   return httpReqFn;
 }
 
-export function fixRequestHeaders(hostname?: string, headers?: OutgoingHttpHeaders): IncomingHttpHeaders {
+// TODO: convert away from IncomingHttpHeaders
+export function fixRequestHeaders(
+  hostname?: string, headers?: OutgoingHttpHeaders,
+): IncomingHttpHeaders {
   if (!headers) {
     return {};
   }
@@ -46,6 +49,7 @@ export function fixRequestHeaders(hostname?: string, headers?: OutgoingHttpHeade
   return headersCopy;
 }
 
+// TODO: convert away from IncomingHttpHeaders
 export function flattenHeaderValues(headers: IncomingHttpHeaders) {
   const originalHeaders = cloneDeep(headers);
   const flattenedHeaders: { [key: string]: string } = {};
@@ -54,27 +58,37 @@ export function flattenHeaderValues(headers: IncomingHttpHeaders) {
       const val = originalHeaders[key];
       if (Array.isArray(val)) {
         flattenedHeaders[key] = val.join(' ');
-      } else {
+      } else if (typeof val === 'string') {
         flattenedHeaders[key] = val;
+      } else {
+        throw new Error('Cannot flatten header key with undefined value');
       }
     }
   }
   return flattenedHeaders;
 }
 
-export function responseBodyToString(responseInfo: ResponseInfo) {
-    let body;
-    if (responseInfo.body) {
-      const contentEncoding = responseInfo.headers['content-encoding'];
-      if (contentEncoding === 'identity' || !contentEncoding) {
-        body = responseInfo.body.toString();
-      } else if (contentEncoding === 'gzip') {
-        body = gunzipSync(responseInfo.body, zlibOptions).toString();
-      } else if (contentEncoding === 'deflate') {
-        body = inflateSync(responseInfo.body, zlibOptions).toString();
-      } else {
-        body = responseInfo.body.toString();
-      }
+export function responseBodyToString(responseInfo: ResponseInfo): string | undefined {
+  let body;
+  if (responseInfo.body) {
+    const contentEncoding = responseInfo.headers['content-encoding'];
+    if (contentEncoding === 'identity' || !contentEncoding) {
+      body = responseInfo.body.toString();
+    } else if (contentEncoding === 'gzip') {
+      body = gunzipSync(responseInfo.body, zlibOptions).toString();
+    } else if (contentEncoding === 'deflate') {
+      body = inflateSync(responseInfo.body, zlibOptions).toString();
+    } else {
+      body = responseInfo.body.toString();
     }
-    return body;
+  }
+  return body;
+}
+
+/**
+ * TypeScript-specific helper to resolve errors in functions where a return type is in the
+ * signature and all the returns are handled before the end of the function.
+ */
+export function assertNever(x: never): never {
+  throw new Error('Unexpected object: ' + x);
 }

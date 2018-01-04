@@ -1,20 +1,20 @@
-import Debug = require('debug');
+import debug = require('debug');
 import { EventEmitter } from 'events';
-import { ClientRequest, createServer, IncomingHttpHeaders, IncomingMessage, RequestOptions, Server,
+import { ClientRequest, createServer, IncomingMessage, RequestOptions, Server,
   ServerResponse } from 'http';
-import cloneDeep = require('lodash.clonedeep');
-import getRawBody = require('raw-body');
-import { format as urlFormat, parse as urlParse, Url } from 'url';
+import cloneDeep = require('lodash.clonedeep'); // tslint:disable-line import-name
+import rawBody = require('raw-body');
+import { format as urlFormat, parse as urlParse, Url, URL } from 'url';
 import { promisify } from 'util';
-import uuid = require('uuid/v4');
+import uuid = require('uuid/v4'); // tslint:disable-line import-name
 import { fixRequestHeaders, requestFunctionForTargetUrl } from '../common';
 
-import { RequestInfo, ResponseInfo } from 'steno';
+import { RequestInfo, ResponseInfo, NotOptionalIncomingHttpHeaders } from 'steno';
 
 export interface ProxyTargetRule {
   type: 'requestOptionRewrite';
-  // NOTE: perhaps instead of exposing the original request to the rule processor, we should just expose the parsed
-  // RequestInfo
+  // NOTE: perhaps instead of exposing the original request to the rule processor, we should just
+  // expose the parsed RequestInfo
   processor: (originalReq: IncomingMessage, reqOptions: RequestOptions) => RequestOptions;
 }
 
@@ -23,7 +23,7 @@ export interface ProxyTargetConfig {
   targetUrl: string; // stores a URL after it's passed through normalizeUrl()
 }
 
-const log = Debug('steno:http-proxy');
+const log = debug('steno:http-proxy');
 
 export class HttpProxy extends EventEmitter {
 
@@ -31,24 +31,26 @@ export class HttpProxy extends EventEmitter {
   private targetUrl: Url;
   private requestOptionRewriteRules?: ProxyTargetRule[];
   private requestFn:
-    (options: RequestOptions | string | URL, callback?: (res: IncomingMessage) => void) => ClientRequest;
+    (options: RequestOptions | string | URL,
+     callback?: (res: IncomingMessage) => void) => ClientRequest;
 
   constructor(targetConfig: ProxyTargetConfig) {
     super();
     log(`proxy init with target URL: ${targetConfig.targetUrl}`);
     this.targetUrl = urlParse(targetConfig.targetUrl);
-    if (targetConfig.rules) {
-      this.requestOptionRewriteRules = targetConfig.rules.filter((r) => r.type === 'requestOptionRewrite');
+    if (targetConfig.rules !== undefined) {
+      this.requestOptionRewriteRules =
+        targetConfig.rules.filter(r => r.type === 'requestOptionRewrite');
     }
     this.requestFn = requestFunctionForTargetUrl(this.targetUrl);
     this.server = createServer(HttpProxy.prototype.onRequest.bind(this));
   }
 
   public onRequest(req: IncomingMessage, res: ServerResponse) {
-    // NOTE: cloneDeep usage here is for safety, but if this is a performance hit, we likely could remove it
+    // NOTE: cloneDeep usage here is for safety, could remove for performance
     const requestInfo: RequestInfo = {
       body: undefined,
-      headers: req.headers,
+      headers: (req.headers as NotOptionalIncomingHttpHeaders),
       httpVersion: req.httpVersion,
       id: uuid(),
       method: cloneDeep(req.method as string),
@@ -63,7 +65,7 @@ export class HttpProxy extends EventEmitter {
       path: requestInfo.url,
     });
 
-    if (this.requestOptionRewriteRules) {
+    if (this.requestOptionRewriteRules !== undefined) {
       // iteratively apply any rules
       proxyReqOptions = this.requestOptionRewriteRules
         .reduce((options, rule) => rule.processor(req, options), proxyReqOptions);
@@ -75,7 +77,7 @@ export class HttpProxy extends EventEmitter {
     const proxyRequest = this.requestFn(proxyReqOptions);
       // TODO: are response trailers really set on `req`?
     req.pipe(proxyRequest);
-    getRawBody(req)
+    rawBody(req)
       .then((body) => {
         requestInfo.body = body;
         requestInfo.trailers = cloneDeep(req.trailers);
@@ -88,7 +90,7 @@ export class HttpProxy extends EventEmitter {
       log('recieved proxy response');
       const responseInfo: ResponseInfo = {
         body: undefined,
-        headers: cloneDeep(proxyResponse.headers),
+        headers: (cloneDeep(proxyResponse.headers) as NotOptionalIncomingHttpHeaders),
         httpVersion: proxyResponse.httpVersion,
         requestId: requestInfo.id,
         statusCode: proxyResponse.statusCode as number,
@@ -99,13 +101,13 @@ export class HttpProxy extends EventEmitter {
       res.statusMessage = responseInfo.statusMessage;
       Object.getOwnPropertyNames(responseInfo.headers).forEach((key) => {
         const val = proxyResponse.headers[key];
-        if (val) {
+        if (val !== undefined) {
           res.setHeader(key, val);
         }
       });
       // TODO: are response trailers really set on `res`?
       proxyResponse.pipe(res);
-      getRawBody(proxyResponse)
+      rawBody(proxyResponse)
         .then((body) => {
           responseInfo.body = body;
           responseInfo.trailers = cloneDeep(proxyResponse.trailers);

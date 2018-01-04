@@ -13,13 +13,31 @@ Install dependencies: `npm install`
 
 ## Tasks
 
+### Linting
+
+This project uses [tslint](https://palantir.github.io/tslint/) to enforce code style rules. The
+style guide chosen is one that translates the [Airbnb Javascript Style Guide](https://github.com/airbnb/javascript)
+into TypeScript: [tslint-config-airbnb](https://github.com/progre/tslint-config-airbnb).
+
+If you are using the [VS Code](https://code.visualstudio.com/) editor (highly recommended), then
+you can use the [TSLint extension](https://marketplace.visualstudio.com/items?itemName=eg2.tslint)
+to highlight style issues in your code as you type, awesome! There's one catch though, and that's
+that some rules cannot be enforced by the plugin because they require extra type information. This
+means that running the actual lint task with `npm run lint` will find more issues than the plugin
+knows about. As a convenience to make it easier to jump to those problem lines of code, this project
+also includes a VS Code task (`.vscode/tasks.json`) called `lint` that will run the `npm run lint`
+command for you, and then parse the output into a format VS Code can use to populate the Problems
+panel. You can run this task opening the command pallette
+(<kbd>Cmd</kbd>+<kbd>P</kbd> / <kbd>Ctrl</kbd>+<kbd>P</kbd>) and choosing "Tasks: Run Task" and then
+"npm: lint".
+
 ### Building
 
 The application can be built in the following configurations:
 
 Development: `npm run build`. After a successful build, the application can be run using `node bin/cli.js <command>`.
 
-Release: `npm run dist`. After a successful build, the individual platform binaries will be inside the `/pkg` directory.
+Release: `npm run pkg`. After a successful build, the individual platform binaries will be inside the `/pkg` directory.
 
 ### Testing
 
