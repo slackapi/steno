@@ -3,6 +3,7 @@ import debug = require('debug');
 import normalizePort = require('normalize-port');
 import normalizeUrl = require('normalize-url');
 import yargs = require('yargs');
+import { prompt as analyticsPrompt } from './analytics';
 import { Controller, ControllerMode } from './controller';
 import { ProxyTargetConfig, ProxyTargetRule } from './record/http-proxy';
 import { PrintFn } from 'steno';
@@ -129,17 +130,22 @@ export default function main() {
     return undefined;
   })();
 
-  if (mode !== undefined) {
-    const internalUrl = argv.internalUrl || argv.appBaseUrl;
-    const controller = createController(
-      mode, normalizePort(argv.controlPort), argv.scenarioName, argv.scenarioDir,
-      normalizeUrl(internalUrl), normalizePort(argv.inPort),
-      undefined, normalizePort(argv.outPort),
-    );
-    controller.start();
-  } else {
+  if (mode === undefined) {
     parser.showHelp();
+    return;
   }
+
+  const internalUrl = argv.internalUrl || argv.appBaseUrl;
+  const controller = createController(
+    mode, normalizePort(argv.controlPort), argv.scenarioName, argv.scenarioDir,
+    normalizeUrl(internalUrl), normalizePort(argv.inPort),
+    undefined, normalizePort(argv.outPort),
+  );
+
+  analyticsPrompt()
+    .then(() => {
+      controller.start();
+    });
 }
 
 function createController(

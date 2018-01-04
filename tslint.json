@@ -2,6 +2,7 @@
   "extends": "tslint-config-airbnb",
   "rules": {
     "align": [true, "parameters", "statements", "members", "elements"],
-    "variable-name": [true, "allow-leading-underscore"]
+    "variable-name": [true, "allow-leading-underscore"],
+    "member-access": [true]
   }
 }

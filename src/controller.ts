@@ -4,6 +4,7 @@ import express = require('express');
 import { createServer, Server } from 'http';
 import { join as pathJoin } from 'path';
 import { PrintFn, Service } from 'steno';
+import { getProbe, Probe } from './analytics';
 import { ProxyTargetConfig } from './record/http-proxy';
 import { Recorder } from './record/recorder';
 import { Replayer } from './replay/replayer';
@@ -53,6 +54,9 @@ export class Controller implements Service {
   // TODO: have a more explicit interface about state with CLI, who can handle "UI"
   private print: PrintFn;
 
+  // Analytics
+  private probe: Probe;
+
   constructor(
     // Control API configuration
     initialMode: ControllerMode, controlPort: string, scenarioName: string, scenarioDir: string,
@@ -78,6 +82,8 @@ export class Controller implements Service {
 
     this.print = print;
 
+    this.probe = getProbe('controller');
+
     log(`initialized with scenarioName: ${this.scenarioName}`);
   }
 
@@ -102,6 +108,8 @@ export class Controller implements Service {
       const device = this.getCurrentModeDevice();
 
       await Promise.all([serverStart, device.start()]);
+      this.probe.track('start');
+      this.probe.track(`mode:${this.mode}`);
       this.print(`Controller started with scenario: ${this.scenarioName}`);
     })();
     return this.startPromise;
@@ -126,6 +134,7 @@ export class Controller implements Service {
 
     // Get current scenario information
     app.get('/scenario', recordModeOnly, (_req: express.Request, res: express.Response) => {
+      this.probe.track('read scenario');
       res.json({ name: this.scenarioName });
     });
 
@@ -133,8 +142,10 @@ export class Controller implements Service {
     app.post('/scenario', recordModeOnly, asyncMiddleware(async (req, res) => {
       if (req.body && req.body.name) {
         await this.setScenarioName(req.body.name);
+        this.probe.track('change scenario');
         res.json({ name: this.scenarioName });
       } else {
+        this.probe.track('change scenario error');
         res.status(400).json({
           error: { description: 'You must specify a scenario name' },
         });
@@ -149,15 +160,18 @@ export class Controller implements Service {
         try {
           await this.setScenarioName(scenario);
           this.print(`Scenario started: ${this.scenarioName}`);
+          this.probe.track('replay scenario start');
           res.json({ name: this.scenarioName });
         } catch (error) {
           log('error starting scenario: %O', error);
           // NOTE: are all errors here really internal server errors? what about when the scenario
           // wasn't found (404)?
+          this.probe.track('replay scenario start error');
           res.status(500);
           res.send({ error: { description: `Could not replay scenario ${scenario}` } });
         }
       } else {
+        this.probe.track('replay scenario start error');
         res.status(400);
         res.json({ error: { description: 'You must specify a scenario name' } });
       }
@@ -165,11 +179,18 @@ export class Controller implements Service {
 
     // Change current scenario information
     app.post('/stop', replayModeOnly, asyncMiddleware(async (_req, res) => {
-      const replayer = (this.replayer as Replayer);
-      const history = replayer.getHistory();
-      await replayer.reset();
-      this.print(`Scenario ended: ${this.scenarioName}`);
-      res.json(history);
+      try {
+        const replayer = (this.replayer as Replayer);
+        const history = replayer.getHistory();
+        await replayer.reset();
+        this.print(`Scenario ended: ${this.scenarioName}`);
+        this.probe.track('replay scenario stop');
+        res.json(history);
+      } catch (error) {
+        this.probe.track('replay scenario stop error');
+        res.status(500);
+        res.json({ error: { description: `Could not stop scenario ${this.scenarioName}` } });
+      }
     }));
 
     return app;

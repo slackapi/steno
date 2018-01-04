@@ -9,7 +9,7 @@
       "request": "launch",
       "preLaunchTask": "build",
       "name": "Launch in Record Mode",
-      "program": "${workspaceRoot}/bin/cli.js",
+      "program": "${workspaceRoot}/bin/steno",
       "args": [
         "--record"
       ]
@@ -19,7 +19,7 @@
       "request": "launch",
       "preLaunchTask": "build",
       "name": "Launch in Replay Mode",
-      "program": "${workspaceRoot}/bin/cli.js",
+      "program": "${workspaceRoot}/bin/steno",
       "args": [
         "--replay"
       ]
