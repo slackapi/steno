@@ -143,8 +143,9 @@ export default function main() {
   );
 
   analyticsPrompt()
-    .then(() => {
-      controller.start();
+    .then(() => controller.start())
+    .catch((error) => {
+      debug(`Terminating due to error: ${error.message}`);
     });
 }
 

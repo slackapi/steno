@@ -8,7 +8,7 @@ import { getProbe, Probe } from './analytics';
 import { ProxyTargetConfig } from './record/http-proxy';
 import { Recorder } from './record/recorder';
 import { Replayer } from './replay/replayer';
-import { assertNever } from './common';
+import { assertNever, startServer } from './common';
 
 const log = debug('steno:controller');
 
@@ -93,23 +93,15 @@ export class Controller implements Service {
    * @returns A promise that resolves when the control API is ready to serve requests
    */
   public async start(): Promise<void> {
+    // NOTE: should there be a close or error listener that changes the state back to
+    // "not started"?
     this.startPromise = this.startPromise || (async () => {
-      const serverStart = new Promise((resolve, reject) => {
-        // NOTE: should there be a close or error listener that changes the state back to
-        // "not started"?
-        this.server.once('error', reject);
-        this.server.listen(this.port, () => {
-          this.server.removeListener('error', reject);
-          this.print(`Control API started on port ${this.port}`);
-          resolve();
-        });
-      });
-
       const device = this.getCurrentModeDevice();
 
-      await Promise.all([serverStart, device.start()]);
+      await Promise.all([startServer(this.server, this.port), device.start()]);
       this.probe.track('start');
       this.probe.track(`mode:${this.mode}`);
+      this.print(`Control API started on port ${this.port}`);
       this.print(`Controller started with scenario: ${this.scenarioName}`);
     })();
     return this.startPromise;

@@ -1,4 +1,4 @@
-import { IncomingHttpHeaders, OutgoingHttpHeaders, request as httpReqFn } from 'http';
+import { IncomingHttpHeaders, OutgoingHttpHeaders, request as httpReqFn, Server } from 'http';
 import { request as httpsReqFn } from 'https';
 import cloneDeep = require('lodash.clonedeep'); // tslint:disable-line import-name
 import { ResponseInfo } from 'steno';
@@ -84,6 +84,22 @@ export function responseBodyToString(responseInfo: ResponseInfo): string | undef
   }
   return body;
 }
+
+/**
+ *
+ * @param server the server to be started
+ * @param port the port it is to be started on
+ */
+export function startServer(server: Server, port: string | number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, () => {
+      server.removeListener('error', reject);
+      resolve();
+    });
+  });
+}
+
 
 /**
  * TypeScript-specific helper to resolve errors in functions where a return type is in the

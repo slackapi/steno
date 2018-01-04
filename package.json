@@ -13,7 +13,7 @@
     "clean": "rimraf build",
     "watch": "tsc -w",
     "lint": "tslint --project . src/**/*.ts",
-    "start": "node bin/cli.js",
+    "start": "node bin/steno",
     "pkg": "npm run clean && npm run lint && npm run build && pkg --out-path pkg ."
   },
   "author": "Ankur Oberoi <aoberoi@gmail.com>",

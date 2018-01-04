@@ -5,9 +5,8 @@ import { ClientRequest, createServer, IncomingMessage, RequestOptions, Server,
 import cloneDeep = require('lodash.clonedeep'); // tslint:disable-line import-name
 import rawBody = require('raw-body');
 import { format as urlFormat, parse as urlParse, Url, URL } from 'url';
-import { promisify } from 'util';
 import uuid = require('uuid/v4'); // tslint:disable-line import-name
-import { fixRequestHeaders, requestFunctionForTargetUrl } from '../common';
+import { fixRequestHeaders, requestFunctionForTargetUrl, startServer } from '../common';
 
 import { RequestInfo, ResponseInfo, NotOptionalIncomingHttpHeaders } from 'steno';
 
@@ -143,10 +142,10 @@ export class HttpProxy extends EventEmitter {
     });
   }
 
-  public listen(port: any): Promise<null> {
+  public listen(port: any): Promise<void> {
     log(`proxy listen on port ${port}`);
-    const serverListen = promisify(this.server.listen);
-    return serverListen.call(this.server, port);
+
+    return startServer(this.server, port);
   }
 
 }

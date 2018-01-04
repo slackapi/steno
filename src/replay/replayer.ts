@@ -5,7 +5,8 @@ import { ClientRequest, createServer, IncomingMessage, RequestOptions, Server } 
 import cloneDeep = require('lodash.clonedeep'); // tslint:disable-line import-name
 import { PrintFn, Service } from 'steno';
 import { format as urlFormat, parse as urlParse, Url, URL } from 'url';
-import { flattenHeaderValues, requestFunctionForTargetUrl, responseBodyToString } from '../common';
+import { flattenHeaderValues, requestFunctionForTargetUrl, responseBodyToString,
+  startServer } from '../common';
 import { Interaction, InteractionCatalog } from './interaction-catalog';
 import { Device } from '../controller';
 
@@ -37,16 +38,13 @@ export class Replayer implements Service, Device {
   public start(): Promise<void> {
     log(`replayer start with path: ${this.catalog.storagePath}`);
     return Promise.all([
-      new Promise((resolve, reject) => {
-        this.server.on('error', reject);
-        this.server.listen(this.port, () => {
-          this.print(`Listening for outgoing requests on port ${this.port}`);
-          this.print(`Incoming requests sent to: ${urlFormat(this.targetUrl)}`);
-          resolve();
-        });
-      }),
+      startServer(this.server, this.port),
       this.catalog.load(),
     ])
+    .then(() => {
+      this.print(`Listening for outgoing requests on port ${this.port}`);
+      this.print(`Incoming requests sent to: ${urlFormat(this.targetUrl)}`);
+    })
     .catch((error) => {
       if (error.code === 'ECATALOGNOPATH') {
         log('starting replayer with a scenario name that wasn\'t found');
