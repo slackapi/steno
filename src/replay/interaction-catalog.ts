@@ -4,6 +4,8 @@ import { Request } from 'express';
 import fs = require('fs');
 import { IncomingMessage } from 'http';
 import isUndefined = require('lodash.isundefined'); // tslint:disable-line import-name
+import isObject = require('lodash.isobject'); // tslint:disable-line import-name
+import isEmpty = require('lodash.isempty'); // tslint:disable-line import-name
 import { basename, resolve as resolvePath } from 'path';
 import getRawBody = require('raw-body'); // tslint:disable-line import-name
 import { RequestInfo, ResponseInfo, NotOptionalIncomingHttpHeaders } from 'steno';
@@ -168,8 +170,8 @@ export class InteractionCatalog extends EventEmitter {
 
   constructor(storagePath: string) {
     super();
-    this.storagePath = storagePath;
     this.reset();
+    this.storagePath = storagePath;
   }
 
   public loadPath(storagePath: string): Promise<void> {
@@ -245,7 +247,9 @@ export class InteractionCatalog extends EventEmitter {
           return false;
         }
         if (!isUndefined(requestInfo.body)) {
-          if (Buffer.compare(requestInfo.body, req.body) !== 0) {
+          // raw body-parser will assign body to `{}` when there is none (such as GET requests)
+          const body = (isObject(req.body) && isEmpty(req.body)) ? Buffer.from('') : req.body;
+          if (Buffer.compare(requestInfo.body, body) !== 0) {
             log('interaction eliminated: body');
             return false;
           }
