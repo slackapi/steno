@@ -3,3 +3,6 @@ title: Steno
 description: Slack App testing companion - Record and Replay your HTTP requests, both incoming and outgoing, to generate fixtures for your tests
 plugins:
   - jemoji
+google_analytics:
+  - UA-56978219-13 # property: Github SDK Docs
+  - UA-56978219-1  # property: *Slack Website
