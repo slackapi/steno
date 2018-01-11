@@ -1,0 +1,13 @@
+{% if site.google_analytics %}
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-56978219-13"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    {% for tracking_id in site.google_analytics %}
+      gtag('config', '{{ tracking_id }}');
+    {% endfor %}
+  </script>
+{% endif %}
