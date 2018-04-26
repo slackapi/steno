@@ -1,13 +1,6 @@
 import { IncomingHttpHeaders, OutgoingHttpHeaders, request as httpReqFn, Server } from 'http';
 import { request as httpsReqFn } from 'https';
-import { ResponseInfo } from 'steno';
 import { Url } from 'url';
-import { constants as zConstants, gunzipSync, inflateSync } from 'zlib';
-
-const zlibOptions = {
-  finishFlush: zConstants.Z_SYNC_FLUSH,
-  flush: zConstants.Z_SYNC_FLUSH,
-};
 
 export function requestFunctionForTargetUrl(url: Url) {
   if (url.protocol) {
@@ -20,6 +13,19 @@ export function requestFunctionForTargetUrl(url: Url) {
     throw new Error(`Target URL protocol ${url.protocol} not supported`);
   }
   return httpReqFn;
+}
+
+export interface IncomingHttpTrailers {
+  [key: string]: string | undefined;
+}
+
+// This type extends the built-in node IncomingHttpHeaders, but because of the way it has been
+// described since DefinitelyTyped/DefinitelyTyped#20695, this type cannot formally extend that
+// base type. The index includes `undefined` as a value type, when strictly speaking this not
+// possible. The only reason it is added is so that other common headers can be named as optional
+// properties, so that intellisense has some awareness of those common headers.
+export interface NotOptionalIncomingHttpHeaders {
+  [header: string]: string | string[];
 }
 
 // TODO: convert away from IncomingHttpHeaders
@@ -67,23 +73,6 @@ export function flattenHeaderValues(headers: IncomingHttpHeaders) {
   return flattenedHeaders;
 }
 
-export function responseBodyToString(responseInfo: ResponseInfo): string | undefined {
-  let body;
-  if (responseInfo.body) {
-    const contentEncoding = responseInfo.headers['content-encoding'];
-    if (contentEncoding === 'identity' || !contentEncoding) {
-      body = responseInfo.body.toString();
-    } else if (contentEncoding === 'gzip') {
-      body = gunzipSync(responseInfo.body, zlibOptions).toString();
-    } else if (contentEncoding === 'deflate') {
-      body = inflateSync(responseInfo.body, zlibOptions).toString();
-    } else {
-      body = responseInfo.body.toString();
-    }
-  }
-  return body;
-}
-
 export function cloneJSON(obj: any): any {
   return JSON.parse(JSON.stringify(obj));
 }
@@ -121,6 +110,7 @@ export function assignErrorIdentifier<T>(p: Promise<T>, id: string): Promise<T> 
   });
 }
 
+export type PrintFn = (str: string, ...args: any[]) => void;
 
 /**
  * TypeScript-specific helper to resolve errors in functions where a return type is in the
@@ -129,3 +119,4 @@ export function assignErrorIdentifier<T>(p: Promise<T>, id: string): Promise<T> 
 export function assertNever(x: never): never {
   throw new Error('Unexpected object: ' + x);
 }
+

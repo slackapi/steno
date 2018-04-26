@@ -3,9 +3,8 @@ import { createWriteStream, open as fsOpen, WriteStream } from 'fs';
 import { IncomingHttpHeaders } from 'http';
 import mkdirp = require('mkdirp');
 import { join as pathJoin } from 'path';
-import { RequestInfo, ResponseInfo } from 'steno';
+import { RequestInfo, ResponseInfo, responseBodyToString } from '../steno';
 import { promisify } from 'util';
-import { responseBodyToString } from '../common';
 
 const createDirectory = promisify(mkdirp);
 const fileOpen = promisify(fsOpen);

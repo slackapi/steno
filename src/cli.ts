@@ -6,7 +6,7 @@ import yargs = require('yargs');
 import { prompt as analyticsPrompt } from './analytics';
 import { Controller, ControllerMode } from './controller';
 import { ProxyTargetConfig, ProxyTargetRule } from './record/http-proxy';
-import { PrintFn } from 'steno';
+import { PrintFn } from './util';
 
 const log = debug('steno:cli');
 

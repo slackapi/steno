@@ -5,9 +5,9 @@ import { ClientRequest, createServer, IncomingMessage, RequestOptions, Server,
 import rawBody = require('raw-body');
 import { format as urlFormat, parse as urlParse, Url, URL } from 'url';
 import uuid = require('uuid/v4'); // tslint:disable-line import-name
-import { fixRequestHeaders, requestFunctionForTargetUrl, startServer, cloneJSON } from '../common';
-
-import { RequestInfo, ResponseInfo, NotOptionalIncomingHttpHeaders } from 'steno';
+import { fixRequestHeaders, requestFunctionForTargetUrl, startServer, cloneJSON,
+  NotOptionalIncomingHttpHeaders } from '../util';
+import { RequestInfo, ResponseInfo } from '../steno';
 
 export interface ProxyTargetRule {
   type: 'requestOptionRewrite';

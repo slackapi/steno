@@ -5,10 +5,10 @@ import fs = require('fs');
 import { IncomingMessage } from 'http';
 import { basename, resolve as resolvePath } from 'path';
 import getRawBody = require('raw-body'); // tslint:disable-line import-name
-import { RequestInfo, ResponseInfo, NotOptionalIncomingHttpHeaders } from 'steno';
+import { RequestInfo, ResponseInfo } from '../steno';
 import { promisify } from 'util';
 import uuid = require('uuid/v4'); // tslint:disable-line import-name
-import { isEmptyObject } from '../common';
+import { isEmptyObject, NotOptionalIncomingHttpHeaders  } from '../util';
 
 const log = debug('steno:interaction-catalog');
 
@@ -161,14 +161,13 @@ function matchHeaders(pattern: NotOptionalIncomingHttpHeaders,
 }
 
 export class InteractionCatalog extends EventEmitter {
-  public interactionHistory: Interaction[];
-  public interactions: Interaction[];
-  public previouslyMatched: Set<string>;
-  public storagePath?: string;
+  public interactionHistory: Interaction[] = [];
+  public interactions: Interaction[] = [];
+  public previouslyMatched: Set<string> = new Set();
+  public storagePath: string = '';
 
   constructor(storagePath: string) {
     super();
-    this.reset();
     this.storagePath = storagePath;
   }
 
@@ -178,9 +177,6 @@ export class InteractionCatalog extends EventEmitter {
   }
 
   public load(): Promise<void> {
-    if (this.storagePath === undefined) {
-      return Promise.reject(new Error('No storage path set'));
-    }
     return readDir(this.storagePath)
       .catch((error) => {
         // if the scenario dir is missing, just continue as if its an empty scenario
@@ -195,12 +191,7 @@ export class InteractionCatalog extends EventEmitter {
         throw error;
       })
       .then((filenames) => {
-        return Promise.all(filenames.map((f) => {
-          if (this.storagePath) {
-            return parseFile(resolvePath(this.storagePath, f));
-          }
-          return Promise.reject(new Error());
-        }));
+        return Promise.all(filenames.map(f => parseFile(resolvePath(this.storagePath, f))));
       })
       .then(interactionsAndSkipped => interactionsAndSkipped.filter(i => i !== undefined))
       .then((interactions) => {

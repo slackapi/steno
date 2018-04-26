@@ -1,8 +1,7 @@
 // import debug = require('debug');
-import { PrintFn, Service } from 'steno';
+import { Service } from '../steno';
 import { Device } from '../controller';
-
-import { assignErrorIdentifier } from '../common';
+import { assignErrorIdentifier, PrintFn } from '../util';
 import { createProxy, HttpProxy, ProxyTargetConfig } from './http-proxy';
 import { HttpSerializer } from './http-serializer';
 

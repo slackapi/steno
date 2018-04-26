@@ -3,12 +3,12 @@ import debug = require('debug');
 import express = require('express');
 import { createServer, Server } from 'http';
 import { join as pathJoin } from 'path';
-import { PrintFn, Service } from 'steno';
+import { Service } from './steno';
 import { getProbe, Probe } from './analytics';
 import { ProxyTargetConfig } from './record/http-proxy';
 import { Recorder } from './record/recorder';
 import { Replayer } from './replay/replayer';
-import { assertNever, startServer } from './common';
+import { assertNever, startServer, PrintFn } from './util';
 
 const log = debug('steno:controller');
 

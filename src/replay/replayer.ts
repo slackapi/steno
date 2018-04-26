@@ -2,10 +2,10 @@ import { raw as rawParser } from 'body-parser';
 import debug = require('debug');
 import express = require('express');
 import { ClientRequest, createServer, IncomingMessage, RequestOptions, Server } from 'http';
-import { PrintFn, Service } from 'steno';
+import { Service, responseBodyToString } from '../steno';
 import { format as urlFormat, parse as urlParse, Url, URL } from 'url';
-import { flattenHeaderValues, requestFunctionForTargetUrl, responseBodyToString,
-  startServer, cloneJSON } from '../common';
+import { flattenHeaderValues, requestFunctionForTargetUrl, startServer, cloneJSON,
+  PrintFn } from '../util';
 import { Interaction, InteractionCatalog } from './interaction-catalog';
 import { Device } from '../controller';
 
