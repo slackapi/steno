@@ -2,11 +2,10 @@ import debug = require('debug');
 import { EventEmitter } from 'events';
 import { ClientRequest, createServer, IncomingMessage, RequestOptions, Server,
   ServerResponse } from 'http';
-import cloneDeep = require('lodash.clonedeep'); // tslint:disable-line import-name
 import rawBody = require('raw-body');
 import { format as urlFormat, parse as urlParse, Url, URL } from 'url';
 import uuid = require('uuid/v4'); // tslint:disable-line import-name
-import { fixRequestHeaders, requestFunctionForTargetUrl, startServer } from '../common';
+import { fixRequestHeaders, requestFunctionForTargetUrl, startServer, cloneJSON } from '../common';
 
 import { RequestInfo, ResponseInfo, NotOptionalIncomingHttpHeaders } from 'steno';
 
@@ -52,9 +51,9 @@ export class HttpProxy extends EventEmitter {
       headers: (req.headers as NotOptionalIncomingHttpHeaders),
       httpVersion: req.httpVersion,
       id: uuid(),
-      method: cloneDeep(req.method as string),
+      method: (req.method as string).slice(0),
       trailers: undefined,
-      url: cloneDeep(req.url as string),
+      url: (req.url as string).slice(0),
     };
 
     let proxyReqOptions: RequestOptions = Object.assign({}, this.targetUrl, {
@@ -79,7 +78,7 @@ export class HttpProxy extends EventEmitter {
     rawBody(req)
       .then((body) => {
         requestInfo.body = body;
-        requestInfo.trailers = cloneDeep(req.trailers);
+        requestInfo.trailers = cloneJSON(req.trailers);
         this.emit('request', requestInfo);
       })
       .catch((error) => {
@@ -89,7 +88,7 @@ export class HttpProxy extends EventEmitter {
       log('recieved proxy response');
       const responseInfo: ResponseInfo = {
         body: undefined,
-        headers: (cloneDeep(proxyResponse.headers) as NotOptionalIncomingHttpHeaders),
+        headers: (cloneJSON(proxyResponse.headers) as NotOptionalIncomingHttpHeaders),
         httpVersion: proxyResponse.httpVersion,
         requestId: requestInfo.id,
         statusCode: proxyResponse.statusCode as number,
@@ -109,7 +108,7 @@ export class HttpProxy extends EventEmitter {
       rawBody(proxyResponse)
         .then((body) => {
           responseInfo.body = body;
-          responseInfo.trailers = cloneDeep(proxyResponse.trailers);
+          responseInfo.trailers = cloneJSON(proxyResponse.trailers);
           this.emit('response', responseInfo);
         })
         .catch((error) => {

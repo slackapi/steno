@@ -2,11 +2,10 @@ import { raw as rawParser } from 'body-parser';
 import debug = require('debug');
 import express = require('express');
 import { ClientRequest, createServer, IncomingMessage, RequestOptions, Server } from 'http';
-import cloneDeep = require('lodash.clonedeep'); // tslint:disable-line import-name
 import { PrintFn, Service } from 'steno';
 import { format as urlFormat, parse as urlParse, Url, URL } from 'url';
 import { flattenHeaderValues, requestFunctionForTargetUrl, responseBodyToString,
-  startServer } from '../common';
+  startServer, cloneJSON } from '../common';
 import { Interaction, InteractionCatalog } from './interaction-catalog';
 import { Device } from '../controller';
 
@@ -79,7 +78,7 @@ export class Replayer implements Service, Device {
       };
       const historyResponseRecord: any = {
         body: responseBodyToString(interaction.response),
-        headers: cloneDeep(interaction.response.headers),
+        headers: cloneJSON(interaction.response.headers),
         statusCode: interaction.response.statusCode,
         timestamp: interaction.responseTimestamp,
       };

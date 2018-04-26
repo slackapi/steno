@@ -1,6 +1,5 @@
 import { IncomingHttpHeaders, OutgoingHttpHeaders, request as httpReqFn, Server } from 'http';
 import { request as httpsReqFn } from 'https';
-import cloneDeep = require('lodash.clonedeep'); // tslint:disable-line import-name
 import { ResponseInfo } from 'steno';
 import { Url } from 'url';
 import { constants as zConstants, gunzipSync, inflateSync } from 'zlib';
@@ -51,7 +50,7 @@ export function fixRequestHeaders(
 
 // TODO: convert away from IncomingHttpHeaders
 export function flattenHeaderValues(headers: IncomingHttpHeaders) {
-  const originalHeaders = cloneDeep(headers);
+  const originalHeaders = cloneJSON(headers);
   const flattenedHeaders: { [key: string]: string } = {};
   for (const key in originalHeaders) {
     if (originalHeaders.hasOwnProperty(key)) {
@@ -83,6 +82,15 @@ export function responseBodyToString(responseInfo: ResponseInfo): string | undef
     }
   }
   return body;
+}
+
+export function cloneJSON(obj: any): any {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+export function isEmptyObject(obj: any): boolean {
+  for (const _k in obj) { return false; }
+  return true;
 }
 
 /**
