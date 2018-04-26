@@ -197,7 +197,12 @@ export class InteractionCatalog extends EventEmitter {
         throw error;
       })
       .then((filenames) => {
-        return Promise.all(filenames.map(f => parseFile(resolvePath(this.storagePath, f))));
+        return Promise.all(filenames.map((f) => {
+          if (this.storagePath) {
+            return parseFile(resolvePath(this.storagePath, f));
+          }
+          return Promise.reject(new Error());
+        }));
       })
       .then(interactionsAndSkipped => interactionsAndSkipped.filter(i => !isUndefined(i)))
       .then((interactions) => {
