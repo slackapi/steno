@@ -1,7 +1,7 @@
-import debug = require('debug');
+import debug from 'debug';
 import { createWriteStream, open as fsOpen, WriteStream } from 'fs';
 import { IncomingHttpHeaders } from 'http';
-import mkdirp = require('mkdirp');
+import mkdirp from 'mkdirp';
 import { join as pathJoin } from 'path';
 import { RequestInfo, ResponseInfo, responseBodyToString } from '../steno';
 import { promisify } from 'util';
@@ -20,6 +20,10 @@ interface Destination {
 
 const log = debug('steno:http-serializer');
 
+/**
+ * Transforms HTTP request or response headers into a newline separated string
+ * @param headers
+ */
 function serializeHeaders(headers: IncomingHttpHeaders): string {
   return Object.getOwnPropertyNames(headers).reduce((str, key) => {
     const val = headers[key];
@@ -27,6 +31,13 @@ function serializeHeaders(headers: IncomingHttpHeaders): string {
   }, '');
 }
 
+/**
+ * Opens a new file for writing to disk given a base filename. This actual filename may require
+ * adding variation since the base filename is not garaunteed to be unique.
+ *
+ * @param baseFilename an absolute path (may or may not already exist)
+ * @returns promise which resolves to a record of the resulting filename and fd (file descriptor)
+ */
 async function getFilenameAndOpen(baseFilename: string): Promise<{ filename: string, fd: number }> {
   const next = async (attempt: number): Promise<{ filename: string, fd: number }> => {
     const filename = attempt > 0 ? `${baseFilename}_${attempt}` : baseFilename;
@@ -40,9 +51,16 @@ async function getFilenameAndOpen(baseFilename: string): Promise<{ filename: str
       throw error;
     }
   };
-  return await next(0);
+  return next(0);
 }
 
+/**
+ * Creates a new file on disk from a base filename as a Destination record which contains a filename
+ * (not previously used) and a corresponding writable stream.
+ *
+ * @param baseFilename an abolsute path (may or may not already exist)
+ * @returns promise which resolves to a new Destination
+ */
 function createDestination(baseFilename: string): Promise<Destination> {
   return getFilenameAndOpen(baseFilename)
     .then(({ filename, fd }) => {
@@ -57,10 +75,13 @@ function createDestination(baseFilename: string): Promise<Destination> {
     });
 }
 
+/**
+ * A serializer which writes HTTP request/response pair information to disk within a storage path
+ */
 export class HttpSerializer {
-  // storagePath is an absolute path
+  /** an absolute path to a parent directory for all serialized request/response pairs */
   public storagePath: string;
-  // pendingRequestDestinations has keys which are request IDs
+  /** a map of destinations for requests that are pending a response (keys are request IDs) */
   public pendingRequestDestinations: Map<string, Destination>;
 
   // NOTE: might want to implement a task queue in order to keep track of operations
@@ -70,16 +91,31 @@ export class HttpSerializer {
     this.pendingRequestDestinations = new Map();
   }
 
+  /**
+   * Prepares the serializer to be used.
+   * @returns promise which fulfills when the serializer is ready
+   */
   public initialize(): Promise<void> {
-    return createDirectory(this.storagePath).then(() => {});
+    return createDirectory(this.storagePath).then(() => {}); // tslint:disable-line no-empty
   }
 
+  /**
+   * Sets a new parent location for all serialized requests.
+   * @param storagePath
+   * @returns promise which fulfills after the storage path is set and the serializer is ready
+   */
   public setStoragePath(storagePath: string): Promise<void> {
     this.storagePath = storagePath;
     return this.initialize();
   }
 
-  public onRequest = (requestInfo: RequestInfo, prefix = '') => {
+  /**
+   * Serializes request
+   *
+   * @param requestInfo
+   * @param prefix an optional file prefix
+   */
+  public onRequest(requestInfo: RequestInfo, prefix = ''): void {
     log('on request');
 
     const data = this.generateRequestData(requestInfo);
@@ -96,7 +132,12 @@ export class HttpSerializer {
       });
   }
 
-  public onResponse = (responseInfo: ResponseInfo) => {
+  /**
+   * Serializes response
+   *
+   * @param responseInfo
+   */
+  public onResponse(responseInfo: ResponseInfo): void {
     log('on response');
     const data = this.generateResponseData(responseInfo);
     const destination = this.pendingRequestDestinations.get(responseInfo.requestId);
@@ -110,7 +151,14 @@ export class HttpSerializer {
     }
   }
 
-  private generateFilename(requestInfo: RequestInfo, prefix = '') {
+  /**
+   * Generates a filename from request information and an optional prefix.
+   *
+   * @param requestInfo
+   * @param prefix
+   * @returns absolute filename
+   */
+  private generateFilename(requestInfo: RequestInfo, prefix = ''): string {
     return pathJoin(
       this.storagePath,
       `${prefix.length > 0 ? `${prefix}_` : ''}` +
@@ -118,7 +166,13 @@ export class HttpSerializer {
     );
   }
 
-  private generateRequestData(requestInfo: RequestInfo) {
+  /**
+   * Serializes a request into a string
+   *
+   * @param requestInfo
+   * @returns request as a string
+   */
+  private generateRequestData(requestInfo: RequestInfo): string {
     return (
       `${requestInfo.method} ${requestInfo.url} HTTP/${requestInfo.httpVersion}\n` +
       serializeHeaders(requestInfo.headers) +
@@ -133,7 +187,13 @@ export class HttpSerializer {
     );
   }
 
-  private generateResponseData(responseInfo: ResponseInfo) {
+  /**
+   * Serializes a response into a string
+   *
+   * @param responseInfo
+   * @returns response as a string
+   */
+  private generateResponseData(responseInfo: ResponseInfo): string {
     const responseBody = responseBodyToString(responseInfo);
     return (
       `HTTP/${responseInfo.httpVersion} ${responseInfo.statusCode} ` +

@@ -1,6 +1,6 @@
-import bodyParser = require('body-parser');
-import debug = require('debug');
-import express = require('express');
+import bodyParser from 'body-parser';
+import express from 'express';
+import debug from 'debug';
 import { createServer, Server } from 'http';
 import { join as pathJoin } from 'path';
 import { Service } from './steno';

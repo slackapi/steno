@@ -1,25 +1,48 @@
 import { raw as rawParser } from 'body-parser';
-import debug = require('debug');
-import express = require('express');
-import { ClientRequest, createServer, IncomingMessage, RequestOptions, Server } from 'http';
+import debug from 'debug';
+import express from 'express';
+import { createServer, IncomingMessage, Server } from 'http';
 import { Service, responseBodyToString } from '../steno';
-import { format as urlFormat, parse as urlParse, Url, URL } from 'url';
-import { flattenHeaderValues, requestFunctionForTargetUrl, startServer, cloneJSON,
-  PrintFn } from '../util';
+import { format as urlFormat, parse as urlParse, Url } from 'url';
+import { flattenHeaderValues, requestFunctionForTargetUrl, startServer, cloneJSON, PrintFn,
+  RequestFn } from '../util';
 import { Interaction, InteractionCatalog } from './interaction-catalog';
 import { Device } from '../controller';
 
 const log = debug('steno:replayer');
 
+export interface History {
+  interactions: Interaction[];
+  meta: {
+    durationMs: number | null;
+    unmatchedCount: {
+      incoming: number;
+      outgoing: number;
+    };
+  };
+}
+
+/**
+ * Replays bidirectional HTTP traffic from a previously recorded set of interactions. Outgoing
+ * requests (sent to the replayer server) are matched against a known catalog of interactions, and
+ * if a match is found, responded to using the response from the catalog. Inversely, incoming
+ * requests (sent to the app) will be sent any time the catalog contains one where all previous
+ * interactions have already been replayed (several can be sent in parallel).
+ */
 export class Replayer implements Service, Device {
+  /** the underlying HTTP server */
   private server: Server;
+  /** an express app used to handle outgoing requests */
   private app: express.Application;
+  /** the port where the server is listening */
   private port: string;
-  private requestFn:
-    (options: RequestOptions | string | URL,
-     callback?: (res: IncomingMessage) => void) => ClientRequest;
+  /** a factory function for creating HTTP client requests */
+  private requestFn: RequestFn;
+  /** the URL where incoming requests are forwarded */
   private targetUrl: Url;
+  /** the catalog of known interactions */
   private catalog: InteractionCatalog;
+  /** a function used to display messages to the user */
   private print: PrintFn;
 
   constructor(targetUrl: string, port: string, storagePath: string, print: PrintFn) {
@@ -34,6 +57,10 @@ export class Replayer implements Service, Device {
     this.catalog.on('clientReqTrigger', this.clientInteraction.bind(this));
   }
 
+  /**
+   * Starts the replayer.
+   * @returns promise that resolves once the replayer is ready to replay requests and responses
+   */
   public start(): Promise<void> {
     log(`replayer start with path: ${this.catalog.storagePath}`);
     return Promise.all([
@@ -51,22 +78,34 @@ export class Replayer implements Service, Device {
       }
       throw error;
     })
-    .then(() => {});
+    .then(() => {}); // tslint:disable-line no-empty
   }
 
+  /**
+   * Sets the path on disk where the replayer will read HTTP interactions for the catalog
+   * @param storagePath absolute path on disk
+   * @returns promise that resolves when the replayer is ready to replay requests and responses
+   */
   public setStoragePath(newPath: string): Promise<void> {
     return this.catalog.loadPath(newPath);
   }
 
+  /**
+   * Resets all history and empties the interaction catalog.
+   * @returns promise that resolves when the replayer is ready to replay requests and responses
+   */
   public reset(): Promise<void> {
     this.catalog.reset();
     return Promise.resolve();
   }
 
-  // remove request IDs, serialize body's to strings, add metadata
-  // TODO: can i add timestamp to both request and response? duration?
-  // TODO: there's a lot of shared logic between this and http-serializer
-  public getHistory() {
+  /**
+   * Returns the interaction history since replaying was last started (or reset)
+   */
+  public getHistory(): History {
+    // remove request IDs, serialize body's to strings, add metadata
+    // TODO: can i add timestamp to both request and response? duration?
+    // TODO: there's a lot of shared logic between this and http-serializer
     const scrubbedHistory: any[] = this.catalog.interactionHistory.map((interaction) => {
       const historyRequestRecord: any = {
         body: interaction.request.body !== undefined ?
@@ -113,7 +152,10 @@ export class Replayer implements Service, Device {
     };
   }
 
-  private createApp() {
+  /**
+   * Creates the express application which handles requests for the server
+   */
+  private createApp(): express.Application {
     const app = express();
 
     app.use(rawParser({ type: '*/*' }));
@@ -135,7 +177,11 @@ export class Replayer implements Service, Device {
     return app;
   }
 
-  private clientInteraction(interaction: Interaction) {
+  /**
+   * Triggers an incoming request (from steno to the app) based on an interaction
+   * @param interaction
+   */
+  private clientInteraction(interaction: Interaction): void {
     const requestInfo = interaction.request;
     const reqOptions = Object.assign({}, this.targetUrl, {
       headers: requestInfo.headers,

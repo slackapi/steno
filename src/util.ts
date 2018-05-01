@@ -1,8 +1,14 @@
-import { IncomingHttpHeaders, OutgoingHttpHeaders, request as httpReqFn, Server } from 'http';
+import { ClientRequest, IncomingHttpHeaders, IncomingMessage, OutgoingHttpHeaders,
+  request as httpReqFn, RequestOptions, Server } from 'http';
 import { request as httpsReqFn } from 'https';
-import { Url } from 'url';
+import { Url, URL } from 'url';
 
-export function requestFunctionForTargetUrl(url: Url) {
+export interface RequestFn {
+  (options: RequestOptions | string | URL,
+   callback?: (res: IncomingMessage) => void): ClientRequest;
+}
+
+export function requestFunctionForTargetUrl(url: Url): RequestFn {
   if (url.protocol) {
     if (url.protocol === 'https:') {
       return httpsReqFn;
@@ -55,7 +61,7 @@ export function fixRequestHeaders(
 }
 
 // TODO: convert away from IncomingHttpHeaders
-export function flattenHeaderValues(headers: IncomingHttpHeaders) {
+export function flattenHeaderValues(headers: IncomingHttpHeaders): { [key: string]: string } {
   const originalHeaders = cloneJSON(headers);
   const flattenedHeaders: { [key: string]: string } = {};
   for (const key in originalHeaders) {
