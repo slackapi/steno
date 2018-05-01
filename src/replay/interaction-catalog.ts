@@ -1,16 +1,14 @@
-import debug = require('debug');
+import debug from 'debug';
 import { EventEmitter } from 'events';
 import { Request } from 'express';
-import fs = require('fs');
+import fs from 'fs';
 import { IncomingMessage } from 'http';
-import isUndefined = require('lodash.isundefined'); // tslint:disable-line import-name
-import isObject = require('lodash.isobject'); // tslint:disable-line import-name
-import isEmpty = require('lodash.isempty'); // tslint:disable-line import-name
 import { basename, resolve as resolvePath } from 'path';
-import getRawBody = require('raw-body'); // tslint:disable-line import-name
-import { RequestInfo, ResponseInfo, NotOptionalIncomingHttpHeaders } from 'steno';
+import getRawBody from 'raw-body'; // tslint:disable-line import-name
+import { RequestInfo, ResponseInfo } from '../steno';
 import { promisify } from 'util';
-import uuid = require('uuid/v4'); // tslint:disable-line import-name
+import { v4 as uuid } from 'uuid';
+import { isEmptyObject, NotOptionalIncomingHttpHeaders  } from '../util';
 
 const log = debug('steno:interaction-catalog');
 
@@ -26,11 +24,16 @@ export interface Interaction {
   responseTimestamp?: number; // useful for history
 }
 
+/**
+ * Parses a string describing a request into request info>
+ * @param requestData
+ * @returns RequestInfo description of the request
+ */
 function parseRequestData(requestData: string): RequestInfo {
   const [firstLine, ...lines] = requestData.split('\n');
   const [method, url, httpData] = firstLine.split(' ');
   let [, httpVersion] = httpData.split('/'); // tslint:disable-line prefer-const
-  if (httpVersion === '' || isUndefined(httpVersion)) { httpVersion = '1.1'; }
+  if (httpVersion === '' || httpVersion === undefined) { httpVersion = '1.1'; }
 
   const emptyLineIndex = lines.indexOf('');
   if (emptyLineIndex === -1) {
@@ -62,6 +65,12 @@ function parseRequestData(requestData: string): RequestInfo {
   };
 }
 
+/**
+ * Parses a string describing a response into response info
+ * @param responseData the string
+ * @param requestId request ID to associate this response with for the info
+ * @returns ResponseInfo description of the response
+ */
 function parseResponseData(responseData: string, requestId: string): ResponseInfo {
   log(`response data: ${responseData}`);
   const [, , firstLine, ...lines] = responseData.split('\n');
@@ -110,6 +119,12 @@ function parseResponseData(responseData: string, requestId: string): ResponseInf
   };
 }
 
+/**
+ * Parses a file on disk into an Interaction (or undefined when the file contents cannot be parsed
+ * as an Interaction).
+ * @param filename absolute path to file
+ * @returns promise that resolves to the interaction read from disk
+ */
 function parseFile(filename: string): Promise<Interaction | undefined> {
   const [timestampStr, direction] = basename(filename).split('_');
   const timestamp = parseInt(timestampStr, 10);
@@ -119,7 +134,7 @@ function parseFile(filename: string): Promise<Interaction | undefined> {
       const [requestData, responseData] = fileContents.split('-----');
       // NOTE: why won't typescript acknowledge the fact that any of the destructured values could
       // be undefined?
-      if (isUndefined(requestData) || isUndefined(responseData)) {
+      if (requestData === undefined || responseData === undefined) {
         log(`cannot parse interaction from ${filename}`);
         // skip
         return Promise.resolve(undefined);
@@ -139,6 +154,14 @@ function parseFile(filename: string): Promise<Interaction | undefined> {
 
 // TODO: populate the ignored headers
 const ignoredHeaders = ['host'];
+
+/**
+ * Decides whether the pattern of headers matches the actual headers. Special case: Host header
+ * is ignored since this object is an intentional man-in-the-middle.
+ *
+ * @param pattern
+ * @param actual
+ */
 function matchHeaders(pattern: NotOptionalIncomingHttpHeaders,
                       actual: NotOptionalIncomingHttpHeaders): boolean {
   for (const key in pattern) {
@@ -162,27 +185,40 @@ function matchHeaders(pattern: NotOptionalIncomingHttpHeaders,
   return true;
 }
 
+/**
+ * A database of Interactions backed by data read from disk upon load which can select interactions
+ * based on whether they match an incoming request.
+ */
 export class InteractionCatalog extends EventEmitter {
-  public interactionHistory: Interaction[];
-  public interactions: Interaction[];
-  public previouslyMatched: Set<string>;
-  public storagePath?: string;
+  /** interactions that took place */
+  public interactionHistory: Interaction[] = [];
+  /** interactions loaded from disk */
+  public interactions: Interaction[] = [];
+  /** the set of request IDs which have taken place or been seen */
+  public previouslyMatched: Set<string> = new Set();
+  /** absolute path to where interactions should be loaded from disk */
+  public storagePath: string = '';
 
   constructor(storagePath: string) {
     super();
-    this.reset();
     this.storagePath = storagePath;
   }
 
+  /**
+   * Updates the storage path and loads interactions into the catalog from that location
+   * @param storagePath
+   * @return promise that resolves when the interactions are loaded
+   */
   public loadPath(storagePath: string): Promise<void> {
     this.storagePath = storagePath;
     return this.load();
   }
 
+  /**
+   * Loads interactions into the catalog from the storage path.
+   * @return promise that resolves when the interactions are loaded
+   */
   public load(): Promise<void> {
-    if (this.storagePath === undefined) {
-      return Promise.reject(new Error('No storage path set'));
-    }
     return readDir(this.storagePath)
       .catch((error) => {
         // if the scenario dir is missing, just continue as if its an empty scenario
@@ -199,7 +235,7 @@ export class InteractionCatalog extends EventEmitter {
       .then((filenames) => {
         return Promise.all(filenames.map(f => parseFile(resolvePath(this.storagePath, f))));
       })
-      .then(interactionsAndSkipped => interactionsAndSkipped.filter(i => !isUndefined(i)))
+      .then(interactionsAndSkipped => interactionsAndSkipped.filter(i => i !== undefined))
       .then((interactions) => {
         log(`interactions loaded from path: ${interactions.length}`);
         this.interactions = interactions as Interaction[];
@@ -210,17 +246,26 @@ export class InteractionCatalog extends EventEmitter {
       .then(() => {}); // tslint:disable-line no-empty
   }
 
-  public reset() {
+  /**
+   * Resets all history and empties the interactions in the catalog.
+   */
+  public reset(): void {
     this.interactions = [];
     this.storagePath = '';
     this.previouslyMatched = new Set();
     this.interactionHistory = [];
   }
 
-  // NOTE: this method is a bit overloaded. it not only finds the matching interaction,
-  // but it also adds to the previouslyMatched set and puts the incoming request in the
-  // interaction history. at this moment, this is all an atomic operation so it seems okay,
-  // but it could be split up
+  /**
+   * Processes an outgoing request (to steno from the application).
+   *
+   * This method will find a matching interaction (that wasn't previously matched) if one exists,
+   * reads the request into the interaction history, and marks the interaction in the catalog
+   * as previously matched.
+   *
+   * @param req
+   * @returns an Interaction if a match is found in the catalog or undefined when there is no match
+   */
   public findMatchingInteraction(req: Request): Interaction | undefined {
     const match = this.interactions
       .filter(interaction => !this.previouslyMatched.has(interaction.request.id))
@@ -246,9 +291,9 @@ export class InteractionCatalog extends EventEmitter {
           log('interaction eliminated: headers');
           return false;
         }
-        if (!isUndefined(requestInfo.body)) {
+        if (requestInfo.body !== undefined) {
           // raw body-parser will assign body to `{}` when there is none (such as GET requests)
-          const body = (isObject(req.body) && isEmpty(req.body)) ? Buffer.from('') : req.body;
+          const body = isEmptyObject(req.body) ? Buffer.from('') : req.body;
           if (Buffer.compare(requestInfo.body, body) !== 0) {
             log('interaction eliminated: body');
             return false;
@@ -258,7 +303,7 @@ export class InteractionCatalog extends EventEmitter {
       })
       .sort((a, b) => (b.timestamp as number) - (a.timestamp as number))
       .shift();
-    if (!isUndefined(match)) {
+    if (match !== undefined) {
       this.previouslyMatched.add(match.request.id);
       this.interactionHistory.push({
         direction: match.direction,
@@ -279,10 +324,16 @@ export class InteractionCatalog extends EventEmitter {
     return match;
   }
 
-  // called when an incoming request (one sent to the App) gets a response - the body isn't yet
-  // complete
-  // TODO: figure out if the response actually matched what it said in the interaction
-  public onIncomingResponse(interaction: Interaction, reqTimestamp: number, res: IncomingMessage) {
+  /**
+   * Processes an incoming response (from the app). This method is called before the body is read
+   * from the stream.
+   *
+   * @param interaction the interaction that was used to generate the request
+   * @param reqTimestamp the time the request was sent
+   * @param res the incoming response
+   */
+  public onIncomingResponse(interaction: Interaction, reqTimestamp: number, res: IncomingMessage): void {
+    // TODO: figure out if the response actually matched what it said in the interaction
     getRawBody(res)
       .then((body) => {
         this.interactionHistory.push({
@@ -307,10 +358,13 @@ export class InteractionCatalog extends EventEmitter {
       });
   }
 
-  // called when an outgoing request (one set to steno) is finished writing the response
-  public onOutgoingResponse(requestId: string) {
+  /**
+   * Processes completion of response to outgoing request (steno finishes writing response to app).
+   * @param requestId
+   */
+  public onOutgoingResponse(requestId: string): void {
     const interaction = this.interactionHistory.find(i => i.request.id === requestId);
-    if (!isUndefined(interaction)) {
+    if (interaction !== undefined) {
       interaction.responseTimestamp = Date.now();
     } else {
       log('could not find request in history when capturing outgoing request\'s' +
@@ -318,9 +372,11 @@ export class InteractionCatalog extends EventEmitter {
     }
   }
 
-  // this is kind of ugly because we previously made the assumption that previouslyMatched and
-  // interactionHistory were updated atomically, and now we've split that across two methods
-  private checkTriggers() {
+  /**
+   * Checks to see if steno can initiate any interactions by searching the catalog for an incoming
+   * request (sent to the app) where all previous interactions are already marked as matched.
+   */
+  private checkTriggers(): void {
     log('check triggers');
     const sortedInteractions = this.interactions.slice()
       .sort((a, b) => (a.timestamp as number) - (b.timestamp as number));

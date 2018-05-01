@@ -1,17 +1,17 @@
 import { join as pathJoin } from 'path';
-import debug = require('debug');
-import normalizePort = require('normalize-port');
-import normalizeUrl = require('normalize-url');
-import yargs = require('yargs');
+import debug from 'debug';
+import normalizePort from 'normalize-port';
+import normalizeUrl from 'normalize-url';
+import yargs from 'yargs';
 import { prompt as analyticsPrompt } from './analytics';
 import { Controller, ControllerMode } from './controller';
 import { ProxyTargetConfig, ProxyTargetRule } from './record/http-proxy';
-import { PrintFn } from 'steno';
+import { PrintFn } from './util';
 
 const log = debug('steno:cli');
 
-export default function main() {
-  const parser = yargs
+export default function main(): void {
+  const parser = yargs(process.argv.slice(2))
     .option('record', {
       desc: 'Start steno in record mode.',
       boolean: true,
@@ -108,7 +108,7 @@ export default function main() {
     .wrap(null)
     .epilogue('for more information, visit https://slackapi.github.io/steno');
 
-  const argv = parser.parse(process.argv.slice(2));
+  const argv = parser.parse();
 
   log('arguments %O', argv);
 

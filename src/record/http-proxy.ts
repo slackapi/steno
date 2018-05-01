@@ -1,14 +1,12 @@
-import debug = require('debug');
+import debug from 'debug';
 import { EventEmitter } from 'events';
-import { ClientRequest, createServer, IncomingMessage, RequestOptions, Server,
-  ServerResponse } from 'http';
-import cloneDeep = require('lodash.clonedeep'); // tslint:disable-line import-name
-import rawBody = require('raw-body');
-import { format as urlFormat, parse as urlParse, Url, URL } from 'url';
-import uuid = require('uuid/v4'); // tslint:disable-line import-name
-import { fixRequestHeaders, requestFunctionForTargetUrl, startServer } from '../common';
-
-import { RequestInfo, ResponseInfo, NotOptionalIncomingHttpHeaders } from 'steno';
+import { createServer, IncomingMessage, RequestOptions, Server, ServerResponse } from 'http';
+import rawBody from 'raw-body';
+import { format as urlFormat, parse as urlParse, Url } from 'url';
+import { v4 as uuid } from 'uuid';
+import { fixRequestHeaders, requestFunctionForTargetUrl, startServer, cloneJSON,
+  NotOptionalIncomingHttpHeaders, RequestFn } from '../util';
+import { RequestInfo, ResponseInfo } from '../steno';
 
 export interface ProxyTargetRule {
   type: 'requestOptionRewrite';
@@ -24,14 +22,20 @@ export interface ProxyTargetConfig {
 
 const log = debug('steno:http-proxy');
 
+/**
+ * An HTTP proxy server that forwards incoming requests to a specified target URL. It applies
+ * any rulesin its configuration before forwarding the request onward.
+ */
 export class HttpProxy extends EventEmitter {
 
+  /** the underlying HTTP server */
   private server: Server;
+  /** the URL where requests are forwarded */
   private targetUrl: Url;
+  /** the collection of rules that can process the requestOptions */
   private requestOptionRewriteRules?: ProxyTargetRule[];
-  private requestFn:
-    (options: RequestOptions | string | URL,
-     callback?: (res: IncomingMessage) => void) => ClientRequest;
+  /** a factory function for creating HTTP client requests */
+  private requestFn: RequestFn;
 
   constructor(targetConfig: ProxyTargetConfig) {
     super();
@@ -45,16 +49,22 @@ export class HttpProxy extends EventEmitter {
     this.server = createServer(HttpProxy.prototype.onRequest.bind(this));
   }
 
-  public onRequest(req: IncomingMessage, res: ServerResponse) {
+  /**
+   * Handle an incoming request and outgoing response by forwarding to the target
+   *
+   * @param req incoming request from a client that will be forwarded to target
+   * @param res response back to the client created from the response from the target
+   */
+  public onRequest(req: IncomingMessage, res: ServerResponse): void {
     // NOTE: cloneDeep usage here is for safety, could remove for performance
     const requestInfo: RequestInfo = {
       body: undefined,
       headers: (req.headers as NotOptionalIncomingHttpHeaders),
       httpVersion: req.httpVersion,
       id: uuid(),
-      method: cloneDeep(req.method as string),
+      method: (req.method as string).slice(0),
       trailers: undefined,
-      url: cloneDeep(req.url as string),
+      url: (req.url as string).slice(0),
     };
 
     let proxyReqOptions: RequestOptions = Object.assign({}, this.targetUrl, {
@@ -79,7 +89,7 @@ export class HttpProxy extends EventEmitter {
     rawBody(req)
       .then((body) => {
         requestInfo.body = body;
-        requestInfo.trailers = cloneDeep(req.trailers);
+        requestInfo.trailers = cloneJSON(req.trailers);
         this.emit('request', requestInfo);
       })
       .catch((error) => {
@@ -89,7 +99,7 @@ export class HttpProxy extends EventEmitter {
       log('recieved proxy response');
       const responseInfo: ResponseInfo = {
         body: undefined,
-        headers: (cloneDeep(proxyResponse.headers) as NotOptionalIncomingHttpHeaders),
+        headers: (cloneJSON(proxyResponse.headers) as NotOptionalIncomingHttpHeaders),
         httpVersion: proxyResponse.httpVersion,
         requestId: requestInfo.id,
         statusCode: proxyResponse.statusCode as number,
@@ -109,7 +119,7 @@ export class HttpProxy extends EventEmitter {
       rawBody(proxyResponse)
         .then((body) => {
           responseInfo.body = body;
-          responseInfo.trailers = cloneDeep(proxyResponse.trailers);
+          responseInfo.trailers = cloneJSON(proxyResponse.trailers);
           this.emit('response', responseInfo);
         })
         .catch((error) => {
@@ -142,6 +152,12 @@ export class HttpProxy extends EventEmitter {
     });
   }
 
+  /**
+   * Start the server by listening on the specified port
+   *
+   * @param port the TCP port to listen on
+   * @returns resolves when the server is listening
+   */
   public listen(port: any): Promise<void> {
     log(`proxy listen on port ${port}`);
 
@@ -150,6 +166,10 @@ export class HttpProxy extends EventEmitter {
 
 }
 
+/**
+ * Factory to create HttpProxy objects
+ * @param targetConfig configuration for the HttpProxy
+ */
 export function createProxy(targetConfig: ProxyTargetConfig): HttpProxy {
   return new HttpProxy(targetConfig);
 }

@@ -1,13 +1,5 @@
-import Insight = require('insight'); // tslint:disable-line import-name
-import pjson = require('pjson');
-
-// extend module defintion to include tracking ID
-declare module 'pjson' {
-  export const analytics: {
-    googleTrackingId: string;
-  };
-}
-const trackingId = pjson.analytics.googleTrackingId;
+import Insight from 'insight'; // tslint:disable-line import-name
+const pkg = require('../package.json'); // tslint:disable-line no-require-imports no-var-requires
 
 /**
  * A probe can be requested by any object in order to implement its analytics tracking
@@ -23,9 +15,9 @@ export interface Probe {
 class GoogleAnalyticsProbe implements Probe {
   private insight: Insight;
 
-  constructor(private name:string, trackingId: string) {
+  constructor(private name: string, trackingId: string) {
     this.insight = new Insight({
-      pkg: pjson,
+      pkg,
       trackingCode: trackingId,
     });
   }
@@ -36,7 +28,7 @@ class GoogleAnalyticsProbe implements Probe {
    *
    * @param action an action name that this probe should track
    */
-  public track(action: string) {
+  public track(action: string): void {
     // @ifdef RELEASE
     this.insight.trackEvent({
       action,
@@ -52,7 +44,7 @@ class GoogleAnalyticsProbe implements Probe {
  * @param name a name for the probe, typically the type of object that requested it
  */
 export function getProbe(name: string): Probe {
-  return new GoogleAnalyticsProbe(name, trackingId);
+  return new GoogleAnalyticsProbe(name, pkg.analytics.googleTrackingId);
 }
 
 /**
@@ -64,8 +56,8 @@ export function getProbe(name: string): Probe {
 export function prompt(): Promise<boolean> {
   // instantiate a dummy insight in order to use its instance method
   const dummy = new Insight({
-    pkg: pjson,
-    trackingCode: trackingId,
+    pkg,
+    trackingCode: pkg.analytics.googleTrackingId,
   });
   if (dummy.optOut === undefined) {
     return new Promise((resolve, reject) => {
