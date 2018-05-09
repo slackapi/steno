@@ -1,5 +1,5 @@
 // import debug from 'debug';
-import { Service } from '../steno';
+import { Service, StenoHook } from '../steno';
 import { Device } from '../controller';
 import { assignErrorIdentifier, PrintFn } from '../util';
 import { createProxy, HttpProxy, ProxyTargetConfig } from './http-proxy';
@@ -35,11 +35,13 @@ export class Recorder implements Service, Device {
     incomingTargetConfig: ProxyTargetConfig, incomingPort: string | number,
     outgoingTargetConfig: ProxyTargetConfig, outgoingPort: string | number,
     storagePath: string,
+    hooks: StenoHook[],
     print: PrintFn = console.log,
   ) {
     this.serializer = new HttpSerializer(storagePath);
 
-    this.outgoingProxy = createProxy(outgoingTargetConfig);
+    const outgoingHooks = hooks.filter(hook => ['outgoingProxyRequestInfo'].includes(hook.hookType));
+    this.outgoingProxy = createProxy(outgoingTargetConfig, outgoingHooks);
     this.outgoingPort = outgoingPort;
 
     this.incomingProxy = createProxy(incomingTargetConfig);
@@ -50,12 +52,12 @@ export class Recorder implements Service, Device {
       return this.serializer.onRequest(info, `${Date.now()}_outgoing`);
     });
     // this.outgoingProxy.on('request', this.serializer.onRequest);
-    this.outgoingProxy.on('response', this.serializer.onResponse);
+    this.outgoingProxy.on('response', this.serializer.onResponse.bind(this.serializer));
     this.incomingProxy.on('request', (info) => {
       return this.serializer.onRequest(info, `${Date.now()}_incoming`);
     });
     // this.incomingProxy.on('request', this.serializer.onRequest);
-    this.incomingProxy.on('response', this.serializer.onResponse);
+    this.incomingProxy.on('response', this.serializer.onResponse.bind(this.serializer));
 
     this.print = print;
   }

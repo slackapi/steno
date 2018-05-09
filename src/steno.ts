@@ -1,9 +1,22 @@
 import { constants as zConstants, gunzipSync, inflateSync } from 'zlib';
 import { IncomingHttpTrailers, NotOptionalIncomingHttpHeaders  } from './util';
+import { IncomingMessage, RequestOptions } from 'http';
 
 export interface Service {
   start(): Promise<void>;
 }
+
+export type StenoHook = OutgoingProxyRequestInfo | SerializerRawRequestBody;
+
+export interface OutgoingProxyRequestInfo {
+  hookType: 'outgoingProxyRequestInfo';
+  processor: (originalReq: IncomingMessage, reqOptions: RequestOptions) => RequestOptions;
+}
+
+export interface SerializerRawRequestBody {
+  hookType: 'serializerRawRequestBody';
+}
+
 // TODO: maybe split this into two types?
 // * "incomplete" (before body and trailers)
 // * "complete" (as shown)

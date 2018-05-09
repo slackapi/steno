@@ -125,4 +125,3 @@ export type PrintFn = (str: string, ...args: any[]) => void;
 export function assertNever(x: never): never {
   throw new Error('Unexpected object: ' + x);
 }
-

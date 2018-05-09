@@ -5,12 +5,13 @@ import normalizeUrl from 'normalize-url';
 import yargs from 'yargs';
 import { prompt as analyticsPrompt } from './analytics';
 import { Controller, ControllerMode } from './controller';
-import { ProxyTargetConfig, ProxyTargetRule } from './record/http-proxy';
+import { ProxyTargetConfig } from './record/http-proxy';
 import { PrintFn } from './util';
+import { StenoHook } from './steno';
 
 const log = debug('steno:cli');
 
-export default function main(): void {
+export default async function main(): Promise<void> {
   const parser = yargs(process.argv.slice(2))
     .option('record', {
       desc: 'Start steno in record mode.',
@@ -31,11 +32,12 @@ export default function main(): void {
       string: true,
       global: true,
     })
-    // NOTE: this is a hidden option because steno don't yet handle use cases outside of Slack API
     .option('external-url', {
+      default: 'https://slack.com',
+      desc: 'The external URL to which steno will forward requests that are recieved on out-port. ' +
+            'Only valid in recoed mode.',
       string: true,
       global: true,
-      hidden: true,
     })
     .option('in-port', {
       alias: 'in',
@@ -74,6 +76,23 @@ export default function main(): void {
       desc: 'The initial scenario. This name is used for the subdirectory of scenario-dir where ' +
             'interactions will be recorded to or replayed from.',
       string: true,
+      global: true,
+    })
+    // Slack-specific options (can be generalized into plugin system later)
+    .option('slack-replace-tokens', {
+      default: false,
+      desc: 'Whether to replace Slack API tokens seen in request bodies. NOTE: When this option ' +
+            'is set, sensitive data may appear on stdout. Only valid in record mode.',
+      boolean: true,
+      global: true,
+    })
+    .option('slack-detect-subdomain', {
+      default: true,
+      desc: 'Whether to replace the subdomain in outgoing requests to Slack based on patterns in ' +
+            'the path. This must be set in order for incoming webhooks, slash command request ' +
+            'URLs, and interactive component request URLs to proxy correctly. Only valid in ' +
+            'record mode.',
+      boolean: true,
       global: true,
     })
     // NOTE: the following commands are legacy and can be removed in 2.x
@@ -136,26 +155,48 @@ export default function main(): void {
   }
 
   const internalUrl = normalizeUrl(argv.internalUrl || argv.appBaseUrl);
-  const externalUrl = argv.externalUrl ? normalizeUrl(argv.externalUrl) : undefined;
+  const externalUrl = normalizeUrl(argv.externalUrl);
+
+  // Load hooks
+  const hooks: StenoHook[] = await (() => {
+    // TODO: lots of code repetition to reduce
+    let loading: Promise<StenoHook[]> = Promise.resolve([]);
+    if (argv.slackDetectSubdomain) {
+      loading = loading.then(loaded => import('./hooks/slack-detect-subdomain').then((module) => {
+        loaded.push(module.createHook(externalUrl));
+        return loaded;
+      }));
+    }
+    if (argv.slackReplaceTokens) {
+      loading = loading.then(loaded => import('./hooks/slack-replace-tokens').then((module) => {
+        loaded.push(module);
+        return loaded;
+      }));
+    }
+    return loading;
+  })();
+
   const controller = createController(
     mode, normalizePort(argv.controlPort), argv.scenarioName, argv.scenarioDir,
     internalUrl, normalizePort(argv.inPort),
     externalUrl, normalizePort(argv.outPort),
+    hooks,
   );
 
   analyticsPrompt()
     .then(() => controller.start())
     .catch((error) => {
       debug(`Terminating due to error: ${error.message}`);
+      // TODO: calling process.exit() is discouraged by node
       process.exit(1);
     });
 }
 
 function createController(
-  // TODO: incomingRequestTargetUrl, inPort, and outPort should be optional
   initialMode: ControllerMode, controlPort: string, scenarioName: string, scenarioDir: string,
   incomingRequestUrl: string, inPort: string,
-  outgoingRequestUrl: string | undefined, outPort: string,
+  outgoingRequestUrl: string, outPort: string,
+  hooks: StenoHook[] = [],
   print: PrintFn = console.log,
 ): Controller {
   const absoluteScenarioDir = pathJoin(process.cwd(), scenarioDir);
@@ -165,48 +206,17 @@ function createController(
   };
 
   // TODO: conditionally read from configuration where parameters are not defined
+  // TODO: can this just be a URL now that rules has been removed? what about a more atomic
+  // proxyconfig that encapsulates the port and the targetUrl?
   const outgoingProxyTargetConfig: ProxyTargetConfig = {
-    targetUrl: outgoingRequestUrl || defaultOutgoingRequestUrl(),
+    targetUrl: outgoingRequestUrl,
   };
-  outgoingProxyTargetConfig.rules =
-    defaultOutgoingRequestRules(outgoingProxyTargetConfig.targetUrl);
 
   return new Controller(
     initialMode, controlPort, scenarioName, absoluteScenarioDir,
     incomingProxyTargetConfig, inPort,
     outgoingProxyTargetConfig, outPort,
+    hooks,
     print,
   );
-}
-
-function defaultOutgoingRequestUrl(): string {
-  // Slack-specific defaults
-  const slackEnvironment = process.env.SLACK_ENV;
-  const outHostPrefix = slackEnvironment ? `${slackEnvironment}.` : '' ;
-  const outTargetHost = `${ outHostPrefix }slack.com`;
-  return `https://${ outTargetHost }`;
-}
-
-function defaultOutgoingRequestRules(outTargetHost: string): ProxyTargetRule[] {
-  // Slack-specific defaults
-  const incomingWebhooksPathPattern = /^\/services\//;
-  const slashCommandsPathPattern = /^\/commands\//;
-  const interactiveResponseUrlPathPattern = /^\/actions\//;
-  const hooksSubdomainRewriteRule: ProxyTargetRule = {
-    processor: (req, optsBefore) => {
-      if (req.url &&
-         (incomingWebhooksPathPattern.test(req.url) || slashCommandsPathPattern.test(req.url) ||
-          interactiveResponseUrlPathPattern.test(req.url))
-      ) {
-        return Object.assign({}, optsBefore, {
-          // hostname is preferred over host (which includes port)
-          host: null,
-          hostname: `hooks.${outTargetHost}`,
-        });
-      }
-      return optsBefore;
-    },
-    type: 'requestOptionRewrite',
-  };
-  return [hooksSubdomainRewriteRule];
 }
