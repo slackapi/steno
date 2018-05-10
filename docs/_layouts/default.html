@@ -27,8 +27,22 @@
           <li><a class="buttons github" href="{{ site.github.repository_url }}">View On GitHub</a></li>
         </ul>
 
+        <h3 class="header">References:</h3>
+        <ul class="navigation">
+          {% for item in site.references %}
+            <li class="navigation"><a href="{{ item.url }}">{{ item.title }}</a></li>
+          {% endfor %}
+        </ul>
+
+        <h3 class="header">Guides:</h3>
+        <ul class="navigation">
+          {% for item in site.guides %}
+            <li class="navigation"><a href="{{ item.url }}">{{ item.title }}</a></li>
+          {% endfor %}
+        </ul>
+
         {% if site.github.is_project_page %}
-          <p class="header">This project is maintained by <a class="header name" href="{{ site.github.owner_url }}">{{ site.github.owner_name }}</a></p>
+          <p class="byline">This project is maintained by <a class="header name" href="{{ site.github.owner_url }}">{{ site.github.owner_name }}</a></p>
         {% endif %}
 
         {% if site.github.is_user_page %}
