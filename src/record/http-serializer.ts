@@ -83,6 +83,7 @@ export class HttpSerializer {
   public storagePath: string;
   /** a map of destinations for requests that are pending a response (keys are request IDs) */
   public pendingRequestDestinations: Map<string, Destination>;
+  /** a hook to modify the request info before it is serialized */
   private transformRawRequestBodyHook?: SerializerRawRequest;
 
   // NOTE: might want to implement a task queue in order to keep track of operations

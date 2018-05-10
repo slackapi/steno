@@ -5,10 +5,18 @@ import nonce from 'nonce-str'; // tslint:disable-line import-name
 
 const authorizationHeaderPattern = /^Bearer (.*)$/;
 
+/**
+ * Helper for creating fake tokens
+ * @param length
+ */
 function createPlaceholderToken(length: number): string {
   return `xoxf-${nonce(length - 5)}`;
 }
 
+/**
+ * Creates a hook which replaces Slack API tokens with fake tokens
+ * @param print a function used to show text to the user
+ */
 export function createHook(print: PrintFn): SerializerRawRequest {
   print('Starting with Slack token replacement enabled. Each time a token is encountered in an ' +
         'interaction, it will be replaced with a placeholder. Make these substitutions in test ' +
@@ -18,8 +26,15 @@ export function createHook(print: PrintFn): SerializerRawRequest {
 
   const tokenReplacements: Map<string, string> = new Map();
 
+  /**
+   * Finds a replacement for the given Slack API token from a previous replacement, or as a new
+   * fake token
+   *
+   * @param token
+   */
   function replaceToken(token: string): string {
-    const replacement = tokenReplacements.get(token) || createPlaceholderToken(token.length);
+    const replacement = tokenReplacements.get(token) !== undefined ?
+      (tokenReplacements.get(token) as string) : createPlaceholderToken(token.length);
     tokenReplacements.set(token, replacement);
     print(`Slack token replaced: TOKEN=${token} REPLACEMENT=${replacement}`);
     return replacement;
