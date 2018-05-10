@@ -45,6 +45,7 @@
     "insight": "^0.10.1",
     "js-string-escape": "^1.0.1",
     "mkdirp": "^0.5.1",
+    "nonce-str": "^1.0.1",
     "normalize-port": "^1.0.0",
     "normalize-url": "^2.0.1",
     "preprocess-cli-tool": "^1.0.1",

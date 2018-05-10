@@ -6,3 +6,16 @@ plugins:
 google_analytics:
   - UA-56978219-13 # property: Github SDK Docs
   - UA-56978219-1  # property: *Slack Website
+exclude: [_diagrams]
+collections:
+  guides:
+    output: true
+    permalink: /:collection/:path/
+  references:
+    output: true
+    permalink: /:collection/:path/
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default

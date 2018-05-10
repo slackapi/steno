@@ -1,3 +1,7 @@
+---
+title: Control API
+---
+
 # Steno Control API
 
 The control API allows you to program the state and behavior of Steno.

@@ -3,7 +3,7 @@ import express from 'express';
 import debug from 'debug';
 import { createServer, Server } from 'http';
 import { join as pathJoin } from 'path';
-import { Service } from './steno';
+import { Service, StenoHook } from './steno';
 import { getProbe, Probe } from './analytics';
 import { ProxyTargetConfig } from './record/http-proxy';
 import { Recorder } from './record/recorder';
@@ -46,6 +46,7 @@ export class Controller implements Service {
   private incomingPort?: string;
   private outgoingTargetConfig?: ProxyTargetConfig;
   private outgoingPort?: string;
+  private recorderHooks: StenoHook[];
 
   // Internal state
   private startPromise?: Promise<void>;
@@ -60,10 +61,13 @@ export class Controller implements Service {
   constructor(
     // Control API configuration
     initialMode: ControllerMode, controlPort: string, scenarioName: string, scenarioDir: string,
-    // Recorder and Replayer configuration
+    // Recorder and Replayer configuration (TODO: refactor into a single object so that
+    // this object can blindly pass recorder and replayer options when initializing devices)
     incomingTargetConfig: ProxyTargetConfig, incomingPort: string,
     outgoingTargetConfig: ProxyTargetConfig, outgoingPort: string,
+
     // Optional params
+    hooks: StenoHook[] = [],
     print: PrintFn = console.log,
   ) {
 
@@ -79,6 +83,11 @@ export class Controller implements Service {
     this.incomingPort = incomingPort;
     this.outgoingTargetConfig = outgoingTargetConfig;
     this.outgoingPort = outgoingPort;
+
+    this.recorderHooks = hooks.filter((hook) => {
+      // TODO: use the intersection of enums to describe the set of hooks
+      return ['outgoingProxyRequestInfo', 'serializerRawRequest'].includes(hook.hookType);
+    });
 
     this.print = print;
 
@@ -223,6 +232,7 @@ export class Controller implements Service {
             this.incomingTargetConfig, this.incomingPort,
             this.outgoingTargetConfig, this.outgoingPort,
             this.pathFromScenarioName(this.scenarioName),
+            this.recorderHooks,
             this.print,
           );
         } else {

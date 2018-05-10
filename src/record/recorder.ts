@@ -1,5 +1,5 @@
 // import debug from 'debug';
-import { Service } from '../steno';
+import { Service, StenoHook } from '../steno';
 import { Device } from '../controller';
 import { assignErrorIdentifier, PrintFn } from '../util';
 import { createProxy, HttpProxy, ProxyTargetConfig } from './http-proxy';
@@ -35,11 +35,17 @@ export class Recorder implements Service, Device {
     incomingTargetConfig: ProxyTargetConfig, incomingPort: string | number,
     outgoingTargetConfig: ProxyTargetConfig, outgoingPort: string | number,
     storagePath: string,
+    // TODO: more specific type
+    hooks: StenoHook[],
     print: PrintFn = console.log,
   ) {
-    this.serializer = new HttpSerializer(storagePath);
+    // TODO: use an enum to describe the set of serializer hooks
+    const serializerHooks = hooks.filter(hook => ['serializerRawRequest'].includes(hook.hookType));
+    this.serializer = new HttpSerializer(storagePath, serializerHooks);
 
-    this.outgoingProxy = createProxy(outgoingTargetConfig);
+    // TODO: use an enum to describe the set of outgoing proxy hooks
+    const outgoingProxyHooks = hooks.filter(hook => ['outgoingProxyRequestInfo'].includes(hook.hookType));
+    this.outgoingProxy = createProxy(outgoingTargetConfig, outgoingProxyHooks);
     this.outgoingPort = outgoingPort;
 
     this.incomingProxy = createProxy(incomingTargetConfig);
@@ -50,12 +56,12 @@ export class Recorder implements Service, Device {
       return this.serializer.onRequest(info, `${Date.now()}_outgoing`);
     });
     // this.outgoingProxy.on('request', this.serializer.onRequest);
-    this.outgoingProxy.on('response', this.serializer.onResponse);
+    this.outgoingProxy.on('response', this.serializer.onResponse.bind(this.serializer));
     this.incomingProxy.on('request', (info) => {
       return this.serializer.onRequest(info, `${Date.now()}_incoming`);
     });
     // this.incomingProxy.on('request', this.serializer.onRequest);
-    this.incomingProxy.on('response', this.serializer.onResponse);
+    this.incomingProxy.on('response', this.serializer.onResponse.bind(this.serializer));
 
     this.print = print;
   }

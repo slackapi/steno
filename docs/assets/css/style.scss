@@ -1,0 +1,30 @@
+---
+---
+
+@import "{{ site.theme }}";
+
+h3.header {
+  color: #fff;
+}
+
+header li.navigation {
+  width: auto;
+  height: auto;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  margin: 0 0 22px;
+}
+
+p.byline {
+  line-height: 1.3em;
+}
+
+@media print, screen and (max-width: 960px) {
+  header ul.navigation {
+    position: relative;
+    right: inherit;
+    top: inherit;
+  }
+}

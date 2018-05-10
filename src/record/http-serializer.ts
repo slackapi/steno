@@ -3,7 +3,7 @@ import { createWriteStream, open as fsOpen, WriteStream } from 'fs';
 import { IncomingHttpHeaders } from 'http';
 import mkdirp from 'mkdirp';
 import { join as pathJoin } from 'path';
-import { RequestInfo, ResponseInfo, responseBodyToString } from '../steno';
+import { RequestInfo, ResponseInfo, responseBodyToString, StenoHook, SerializerRawRequest } from '../steno';
 import { promisify } from 'util';
 
 const createDirectory = promisify(mkdirp);
@@ -83,12 +83,18 @@ export class HttpSerializer {
   public storagePath: string;
   /** a map of destinations for requests that are pending a response (keys are request IDs) */
   public pendingRequestDestinations: Map<string, Destination>;
+  /** a hook to modify the request info before it is serialized */
+  private transformRawRequestBodyHook?: SerializerRawRequest;
 
   // NOTE: might want to implement a task queue in order to keep track of operations
-  constructor(storagePath: string) {
+  // TODO: more specific type for hooks
+  constructor(storagePath: string, hooks: StenoHook[]) {
     this.storagePath = storagePath;
-    log(`storage path: ${this.storagePath}`);
+    this.transformRawRequestBodyHook = hooks.find((hook) => {
+      return hook.hookType === 'serializerRawRequest';
+    }) as SerializerRawRequest;
     this.pendingRequestDestinations = new Map();
+    log(`storage path: ${this.storagePath}`);
   }
 
   /**
@@ -117,6 +123,11 @@ export class HttpSerializer {
    */
   public onRequest(requestInfo: RequestInfo, prefix = ''): void {
     log('on request');
+
+    if (this.transformRawRequestBodyHook !== undefined) {
+      // tslint:disable-next-line no-parameter-reassignment
+      requestInfo = this.transformRawRequestBodyHook.processor(requestInfo);
+    }
 
     const data = this.generateRequestData(requestInfo);
     const baseFilename = this.generateFilename(requestInfo, prefix);
@@ -162,7 +173,7 @@ export class HttpSerializer {
     return pathJoin(
       this.storagePath,
       `${prefix.length > 0 ? `${prefix}_` : ''}` +
-      `${requestInfo.url.slice(1).replace(/\//g, '_')}_${requestInfo.method}`,
+      `${requestInfo.method}`,
     );
   }
 

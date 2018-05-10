@@ -6,17 +6,9 @@ import { format as urlFormat, parse as urlParse, Url } from 'url';
 import { v4 as uuid } from 'uuid';
 import { fixRequestHeaders, requestFunctionForTargetUrl, startServer, cloneJSON,
   NotOptionalIncomingHttpHeaders, RequestFn } from '../util';
-import { RequestInfo, ResponseInfo } from '../steno';
-
-export interface ProxyTargetRule {
-  type: 'requestOptionRewrite';
-  // NOTE: perhaps instead of exposing the original request to the rule processor, we should just
-  // expose the parsed RequestInfo
-  processor: (originalReq: IncomingMessage, reqOptions: RequestOptions) => RequestOptions;
-}
+import { RequestInfo, ResponseInfo, StenoHook, OutgoingProxyRequestInfo } from '../steno';
 
 export interface ProxyTargetConfig {
-  rules?: ProxyTargetRule[];
   targetUrl: string; // stores a URL after it's passed through normalizeUrl()
 }
 
@@ -32,19 +24,17 @@ export class HttpProxy extends EventEmitter {
   private server: Server;
   /** the URL where requests are forwarded */
   private targetUrl: Url;
-  /** the collection of rules that can process the requestOptions */
-  private requestOptionRewriteRules?: ProxyTargetRule[];
   /** a factory function for creating HTTP client requests */
   private requestFn: RequestFn;
+  /** a hook for arbitrary pre-processing of request info before its sent to the target */
+  private requestInfoHook?: OutgoingProxyRequestInfo;
 
-  constructor(targetConfig: ProxyTargetConfig) {
+  constructor(targetConfig: ProxyTargetConfig, hooks: StenoHook[] = []) {
     super();
     log(`proxy init with target URL: ${targetConfig.targetUrl}`);
     this.targetUrl = urlParse(targetConfig.targetUrl);
-    if (targetConfig.rules !== undefined) {
-      this.requestOptionRewriteRules =
-        targetConfig.rules.filter(r => r.type === 'requestOptionRewrite');
-    }
+
+    this.requestInfoHook = hooks.find(hook => hook.hookType === 'outgoingProxyRequestInfo') as OutgoingProxyRequestInfo;
     this.requestFn = requestFunctionForTargetUrl(this.targetUrl);
     this.server = createServer(HttpProxy.prototype.onRequest.bind(this));
   }
@@ -74,10 +64,8 @@ export class HttpProxy extends EventEmitter {
       path: requestInfo.url,
     });
 
-    if (this.requestOptionRewriteRules !== undefined) {
-      // iteratively apply any rules
-      proxyReqOptions = this.requestOptionRewriteRules
-        .reduce((options, rule) => rule.processor(req, options), proxyReqOptions);
+    if (this.requestInfoHook !== undefined) {
+      proxyReqOptions = this.requestInfoHook.processor(req, proxyReqOptions);
     }
 
     proxyReqOptions.headers = fixRequestHeaders(proxyReqOptions.hostname, proxyReqOptions.headers);
@@ -170,6 +158,6 @@ export class HttpProxy extends EventEmitter {
  * Factory to create HttpProxy objects
  * @param targetConfig configuration for the HttpProxy
  */
-export function createProxy(targetConfig: ProxyTargetConfig): HttpProxy {
-  return new HttpProxy(targetConfig);
+export function createProxy(targetConfig: ProxyTargetConfig, hooks: StenoHook[] = []): HttpProxy {
+  return new HttpProxy(targetConfig, hooks);
 }
