@@ -20,7 +20,7 @@ Steno is easiest to use if you follow this workflow. For many of you, this might
 
    Running `steno --record` will prompt Steno to start a local server listening on a URL -- by default, `http://localhost:3000/...`. You can change this using the `--out-port` option. Adjust your code to send requests Steno's URL instead of `https://slack.com/...`. Hint: if you're using the [Node Slack SDK](https://github.com/slackapi/node-slack-sdk), this can be done easily using the `slackApiUrl` option.
 
-   Steno will also record requests that are coming **into** your app from the Slack Platform, such as those from interactive messages or the events API. By default, Steno will listen for these requests at `http://localhost:3010`. You can change this using the `--in-port` option. If you have a tunneling tool like [ngrok set up](https://api.slack.com/tutorials/tunneling-with-ngrok), follow the guide on [using Steno with a development proxy]().
+   Steno will also record requests that are coming **into** your app from the Slack Platform, such as those from interactive messages or the events API. By default, Steno will listen for these requests at `http://localhost:3010`. You can change this using the `--in-port` option. If you have a tunneling tool like [ngrok set up](https://api.slack.com/tutorials/tunneling-with-ngrok), follow the guide on [using Steno with tunneling in development](./guides/tunneling).
 
    Steno needs to be told where to forward the requests to reach your app. This is specified using the `--internal-url` option. For example, if the app is listening on port 5000, the `--internal-url` is `localhost:5000`.
 
