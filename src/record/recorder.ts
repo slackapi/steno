@@ -35,13 +35,17 @@ export class Recorder implements Service, Device {
     incomingTargetConfig: ProxyTargetConfig, incomingPort: string | number,
     outgoingTargetConfig: ProxyTargetConfig, outgoingPort: string | number,
     storagePath: string,
+    // TODO: more specific type
     hooks: StenoHook[],
     print: PrintFn = console.log,
   ) {
-    this.serializer = new HttpSerializer(storagePath);
+    // TODO: use an enum to describe the set of serializer hooks
+    const serializerHooks = hooks.filter(hook => ['serializerRawRequest'].includes(hook.hookType));
+    this.serializer = new HttpSerializer(storagePath, serializerHooks);
 
-    const outgoingHooks = hooks.filter(hook => ['outgoingProxyRequestInfo'].includes(hook.hookType));
-    this.outgoingProxy = createProxy(outgoingTargetConfig, outgoingHooks);
+    // TODO: use an enum to describe the set of outgoing proxy hooks
+    const outgoingProxyHooks = hooks.filter(hook => ['outgoingProxyRequestInfo'].includes(hook.hookType));
+    this.outgoingProxy = createProxy(outgoingTargetConfig, outgoingProxyHooks);
     this.outgoingPort = outgoingPort;
 
     this.incomingProxy = createProxy(incomingTargetConfig);

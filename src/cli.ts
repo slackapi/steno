@@ -168,8 +168,10 @@ export default async function main(): Promise<void> {
       }));
     }
     if (argv.slackReplaceTokens) {
+      // NOTE: what about responses that contain a token? currently, this is only the `oauth.access`
+      // and `oauth.token` Web API methods.
       loading = loading.then(loaded => import('./hooks/slack-replace-tokens').then((module) => {
-        loaded.push(module);
+        loaded.push(module.createHook(console.log));
         return loaded;
       }));
     }

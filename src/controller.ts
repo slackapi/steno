@@ -85,7 +85,8 @@ export class Controller implements Service {
     this.outgoingPort = outgoingPort;
 
     this.recorderHooks = hooks.filter((hook) => {
-      return ['outgoingProxyRequestInfo', 'serializerRawRequestBody'].includes(hook.hookType);
+      // TODO: use the intersection of enums to describe the set of hooks
+      return ['outgoingProxyRequestInfo', 'serializerRawRequest'].includes(hook.hookType);
     });
 
     this.print = print;

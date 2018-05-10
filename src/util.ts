@@ -30,6 +30,7 @@ export interface IncomingHttpTrailers {
 // base type. The index includes `undefined` as a value type, when strictly speaking this not
 // possible. The only reason it is added is so that other common headers can be named as optional
 // properties, so that intellisense has some awareness of those common headers.
+// TODO: use index types to create this from IncomngHttpHeaders
 export interface NotOptionalIncomingHttpHeaders {
   [header: string]: string | string[];
 }

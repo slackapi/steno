@@ -6,15 +6,16 @@ export interface Service {
   start(): Promise<void>;
 }
 
-export type StenoHook = OutgoingProxyRequestInfo | SerializerRawRequestBody;
+export type StenoHook = OutgoingProxyRequestInfo | SerializerRawRequest;
 
 export interface OutgoingProxyRequestInfo {
   hookType: 'outgoingProxyRequestInfo';
   processor: (originalReq: IncomingMessage, reqOptions: RequestOptions) => RequestOptions;
 }
 
-export interface SerializerRawRequestBody {
-  hookType: 'serializerRawRequestBody';
+export interface SerializerRawRequest {
+  hookType: 'serializerRawRequest';
+  processor: (request: RequestInfo) => RequestInfo;
 }
 
 // TODO: maybe split this into two types?
