@@ -172,7 +172,7 @@ export class HttpSerializer {
     return pathJoin(
       this.storagePath,
       `${prefix.length > 0 ? `${prefix}_` : ''}` +
-      `${requestInfo.url.slice(1).replace(/\//g, '_')}_${requestInfo.method}`,
+      `${requestInfo.method}`,
     );
   }
 
