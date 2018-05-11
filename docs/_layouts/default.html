@@ -30,14 +30,14 @@
         <h3 class="header">References:</h3>
         <ul class="navigation">
           {% for item in site.references %}
-            <li class="navigation"><a href="{{ item.url }}">{{ item.title }}</a></li>
+            <li class="navigation"><a href="{{ item.url | relative_url }}">{{ item.title }}</a></li>
           {% endfor %}
         </ul>
 
         <h3 class="header">Guides:</h3>
         <ul class="navigation">
           {% for item in site.guides %}
-            <li class="navigation"><a href="{{ item.url }}">{{ item.title }}</a></li>
+            <li class="navigation"><a href="{{ item.url | relative_url }}">{{ item.title }}</a></li>
           {% endfor %}
         </ul>
 
