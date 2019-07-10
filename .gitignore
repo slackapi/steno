@@ -1,6 +1,12 @@
+# Secrets
 .env
+
+# IDE files
 .idea
+
+# Build artifacts
 /node_modules
 /build
 /pkg
 /docs/_site
+/docs/Gemfile.lock
