@@ -197,7 +197,7 @@ export class InteractionCatalog extends EventEmitter {
   /** the set of request IDs which have taken place or been seen */
   public previouslyMatched: Set<string> = new Set();
   /** absolute path to where interactions should be loaded from disk */
-  public storagePath: string = '';
+  public storagePath = '';
 
   constructor(storagePath: string) {
     super();
