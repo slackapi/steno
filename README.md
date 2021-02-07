@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/slackapi/steno.svg?branch=master)](https://travis-ci.org/slackapi/steno)
 
 Steno is a tool for recording and replaying HTTP requests and responses, to and from the Slack Platform, in order to
-generate testing fixtues for a Slack App.
+generate testing fixtures for a Slack App.
 
 In record mode, Steno is a two-way HTTP proxy that captures each request and response that passes through it (initiated
 from either the Slack App or the Slack Platform) and writes them to disk as **scenarios**.
