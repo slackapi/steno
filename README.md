@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.org/slackapi/steno.svg?branch=master)](https://travis-ci.org/slackapi/steno)
 
+> ⚠ We are not actively developing the Steno project at this time. Please stay tuned for updated testing tools from your friends at @slackapi 👋
+
 Steno is a tool for recording and replaying HTTP requests and responses, to and from the Slack Platform, in order to
 generate testing fixtures for a Slack App.
 
